@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   loadState, saveState, createUser, updateBalance, addTransaction, addBet,
@@ -185,14 +185,14 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
 
   const categories = [
     { icon: '🔥', name: 'Popular' }, { icon: '🎰', name: 'Slots' },
-    { icon: '🚀', name: 'Crash' }, { icon: '🎲', name: 'Dice' },
-    { icon: '🎯', name: 'Wheel' }, { icon: '🃏', name: 'Cards' },
+    { icon: '✈️', name: 'Plane' }, { icon: '🎲', name: 'Dice' },
+    { icon: '🎯', name: 'Wheel' }, { icon: '💎', name: 'Mines' },
     { icon: '📡', name: 'Live' }, { icon: '🎮', name: 'All' },
   ];
 
   const games = [
     { id: 'slots', icon: '🎰', name: "Joker's Fortune", badge: 'HOT', color: 'from-purple-600 to-purple-900' },
-    { id: 'crash', icon: '🚀', name: 'Crash Rocket', badge: 'NEW', color: 'from-blue-600 to-blue-900' },
+    { id: 'crash', icon: '✈️', name: 'Aviator Plane', badge: '🔥HOT', color: 'from-blue-600 to-blue-900' },
     { id: 'mines', icon: '💎', name: 'Diamond Mines', badge: 'TOP', color: 'from-emerald-600 to-emerald-900' },
     { id: 'dice', icon: '🎲', name: 'Lucky Dice', badge: '', color: 'from-amber-600 to-amber-900' },
     { id: 'wheel', icon: '🎡', name: 'Lucky Wheel', badge: '🎁', color: 'from-pink-600 to-pink-900' },
@@ -200,9 +200,9 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
 
   const winners = [
     { name: 'Raj***', amount: 15000, game: 'Slots' },
-    { name: 'Pri***', amount: 8500, game: 'Crash' },
+    { name: 'Pri***', amount: 85000, game: 'Plane' },
     { name: 'Amit***', amount: 25000, game: 'Mines' },
-    { name: 'San***', amount: 5000, game: 'Wheel' },
+    { name: 'San***', amount: 50000, game: 'Wheel' },
     { name: 'Neh***', amount: 12000, game: 'Dice' },
   ];
 
@@ -216,7 +216,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => navigate('wallet')}
-            className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-full px-3 py-1.5 flex items-center gap-1">
+            className="bg-[#1A1A1A] border border-[#FFC93D]/30 rounded-full px-3 py-1.5 flex items-center gap-1.5 active:scale-95 transition-transform">
             <span className="text-xs">💰</span>
             <span className="text-xs font-bold text-[#FFC93D] font-mono-game">{formatCurrency(wallet?.balance || 0)}</span>
           </button>
@@ -227,22 +227,51 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
       </div>
 
       <div className="px-4 pt-3 space-y-5">
+        {/* Welcome Banner */}
+        <div className="bg-gradient-to-r from-purple-900/60 via-purple-800/40 to-[#141414] rounded-2xl p-4 border border-purple-700/30 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[#FFC93D]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="relative z-10">
+            <p className="text-xs text-purple-300">Welcome back,</p>
+            <p className="text-lg font-black text-white">{user?.name || 'Player'} 👋</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] bg-[#FFC93D]/20 text-[#FFC93D] px-2 py-0.5 rounded-full font-bold">VIP {user?.vipLevel || 1}</span>
+              <span className="text-[10px] text-purple-300">Level {user?.vipLevel || 1}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Live Ticker */}
-        <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 rounded-xl px-4 py-2.5 flex items-center gap-2 border border-purple-700/20">
           <span className="w-2 h-2 bg-red-500 rounded-full animate-dot-pulse" />
           <span className="text-xs text-purple-200 font-semibold">{onlineCount.toLocaleString()} players online</span>
-          <span className="text-xs text-purple-300 ml-auto">🔴 LIVE</span>
+          <span className="text-[10px] text-purple-300 ml-auto bg-red-500/20 px-2 py-0.5 rounded-full">🔴 LIVE</span>
         </div>
 
         {/* Categories */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-2.5">
           {categories.map((cat, i) => (
             <button key={i} onClick={() => navigate('games')}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#141414] border border-[#2A2A2A] active:scale-95 transition-transform">
+              className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-[#141414] border border-[#2A2A2A] active:scale-95 transition-transform hover:border-purple-500/50">
               <span className="text-2xl">{cat.icon}</span>
               <span className="text-[10px] text-gray-400 font-semibold">{cat.name}</span>
             </button>
           ))}
+        </div>
+
+        {/* Featured Game - Plane */}
+        <div onClick={() => navigate('crash')} className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 rounded-2xl p-5 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-4 right-4 text-6xl animate-float">✈️</div>
+          </div>
+          <div className="relative z-10">
+            <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">🔥 TRENDING</span>
+            <h3 className="text-xl font-black text-white mt-2">Aviator Plane</h3>
+            <p className="text-xs text-blue-200 mt-1">Watch the plane fly & cash out before it crashes!</p>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-xs bg-white/20 text-white px-2 py-1 rounded-full">Max 100x</span>
+              <span className="text-xs bg-white/20 text-white px-2 py-1 rounded-full">Live</span>
+            </div>
+          </div>
         </div>
 
         {/* Popular Games */}
@@ -251,7 +280,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
           <div className="grid grid-cols-3 gap-3">
             {games.map(g => (
               <button key={g.id} onClick={() => navigate(g.id)}
-                className={`relative bg-gradient-to-b ${g.color} rounded-2xl p-3 aspect-[3/4] flex flex-col items-center justify-center active:scale-95 transition-transform overflow-hidden`}>
+                className={`relative bg-gradient-to-b ${g.color} rounded-2xl p-3 aspect-[3/4] flex flex-col items-center justify-center active:scale-95 transition-transform overflow-hidden shadow-lg`}>
                 {g.badge && (
                   <span className="absolute top-2 left-2 bg-red-500 text-[9px] font-bold text-white px-1.5 py-0.5 rounded-full">
                     {g.badge}
@@ -273,10 +302,10 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
             {winners.map((w, i) => (
               <div key={i} className="flex items-center justify-between bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center text-sm">👤</div>
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-b from-purple-600 to-purple-900 flex items-center justify-center text-sm border border-purple-500/30">👤</div>
                   <div>
                     <p className="text-xs font-bold text-white">{w.name}</p>
-                    <p className="text-[10px] text-gray-500">{w.game}</p>
+                    <p className="text-[10px] text-gray-500">won in {w.game}</p>
                   </div>
                 </div>
                 <span className="text-sm font-bold text-[#22C55E] font-mono-game">+{formatCurrency(w.amount)}</span>
@@ -287,7 +316,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
 
         {/* Top Winners Podium */}
         <div>
-          <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">🏆 Top Winners</h3>
+          <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">🏆 Top Winners Today</h3>
           <div className="flex items-end justify-center gap-3">
             {[1, 0, 2].map(idx => {
               const heights = ['h-28', 'h-20', 'h-16'];
@@ -296,12 +325,12 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
               const names = ['Amit***', 'Raj***', 'Pri***'];
               return (
                 <div key={idx} className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-b from-[#FFE58F] to-[#D4A017] flex items-center justify-center text-lg mb-1">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-b from-[#FFE58F] to-[#D4A017] flex items-center justify-center text-lg mb-1 border-2 border-[#FFC93D] shadow-lg shadow-[#FFC93D]/20">
                     👤
                   </div>
                   <span className="text-xs font-bold text-white">{names[idx]}</span>
-                  <span className="text-[10px] text-[#FFC93D] font-mono-game">{formatCurrency(amounts[idx])}</span>
-                  <div className={`${heights[idx]} w-16 mt-2 rounded-t-xl bg-gradient-to-b from-[#FFC93D]/20 to-[#FFC93D]/5 flex items-center justify-center`}>
+                  <span className="text-[10px] text-[#FFC93D] font-mono-game font-bold">{formatCurrency(amounts[idx])}</span>
+                  <div className={`${heights[idx]} w-16 mt-2 rounded-t-xl bg-gradient-to-b from-[#FFC93D]/20 to-[#FFC93D]/5 flex items-center justify-center border-t border-x border-[#FFC93D]/20`}>
                     <span className="text-2xl">{tops[idx]}</span>
                   </div>
                 </div>
@@ -358,150 +387,453 @@ function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: stri
   );
 }
 
-// ============ Deposit Screen ============
+// ============ Deposit Screen (Real Flow) ============
 function DepositScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'upi' | 'usdt'>('upi');
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1=amount, 2=method, 3=payment, 4=verifying, 5=success
+  const [utr, setUtr] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [timer, setTimer] = useState(300); // 5 min
+  const [orderId, setOrderId] = useState('');
   const wallet = getCurrentWallet(state);
   const chips = [100, 300, 500, 1000, 2000, 5000, 10000, 25000];
+  const timerRef = useRef<number>(0);
 
-  const handleDeposit = () => {
-    const amt = parseInt(amount);
-    if (amt < state.settings.minDeposit || amt > state.settings.maxDeposit) {
-      playSound('loss');
-      return;
-    }
-    playSound('click');
-    setState(prev => {
-      let ns = updateBalance(prev, prev.session!, amt);
-      ns = addTransaction(ns, {
-        uid: prev.session!,
-        type: 'deposit',
-        amount: amt,
-        description: `Deposit via ${method.toUpperCase()}`,
-        status: 'completed',
+  const amt = parseInt(amount) || 0;
+
+  // Generate QR code when entering payment step
+  useEffect(() => {
+    if (step === 3 && amt > 0) {
+      const oid = 'LW' + Date.now().toString().slice(-10);
+      setOrderId(oid);
+      let data = '';
+      if (method === 'upi') {
+        data = `upi://pay?pa=${state.settings.upiVpa}&pn=Legacy+Win&am=${amt}&cu=INR&tn=${oid}`;
+      } else {
+        data = `tron:${state.settings.usdtWallet}`;
+      }
+      import('qrcode').then(QRCode => {
+        QRCode.toDataURL(data, { width: 280, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+          .then((url: string) => setQrDataUrl(url))
+          .catch(() => setQrDataUrl(''));
       });
-      return ns;
-    });
-    playSound('fanfare');
-    confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
-    navigate('home');
+    }
+  }, [step, method, amt]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (step === 3) {
+      setTimer(300);
+      timerRef.current = window.setInterval(() => {
+        setTimer(t => {
+          if (t <= 1) {
+            clearInterval(timerRef.current);
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timerRef.current);
+    }
+  }, [step]);
+
+  const formatTimer = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
+  const handleContinue = () => {
+    if (amt < state.settings.minDeposit) { playSound('loss'); return; }
+    if (amt > state.settings.maxDeposit) { playSound('loss'); return; }
+    playSound('click');
+    setStep(2);
+  };
+
+  const handleMethodContinue = () => {
+    playSound('click');
+    setStep(3);
+  };
+
+  const openUpiApp = (scheme: string) => {
+    const upiUri = `upi://pay?pa=${state.settings.upiVpa}&pn=Legacy+Win&am=${amt}&cu=INR&tn=${orderId}`;
+    window.location.href = scheme || upiUri;
+  };
+
+  const handleSubmitUtr = () => {
+    if (utr.length < 10) { playSound('loss'); return; }
+    playSound('click');
+    setStep(4);
+
+    // Simulate verification
+    setTimeout(() => {
+      setState(prev => {
+        let ns = updateBalance(prev, prev.session!, amt);
+        ns = addTransaction(ns, {
+          uid: prev.session!,
+          type: 'deposit',
+          amount: amt,
+          description: `Deposit via ${method.toUpperCase()} • UTR: ${utr}`,
+          status: 'completed',
+          meta: { utr, orderId, method },
+        });
+        return ns;
+      });
+      playSound('fanfare');
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      setStep(5);
+    }, 2000);
+  };
+
+  // Step 1: Amount
   if (step === 1) {
     return (
-      <div className="pb-24 animate-fade-in">
+      <div className="pb-24 animate-fade-in min-h-screen bg-[#0A0A0A]">
         <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
           <button onClick={() => navigate('wallet')} className="text-xl">←</button>
           <h1 className="text-lg font-bold">Add Money</h1>
         </div>
         <div className="px-4 pt-3 space-y-4">
-          <div className="bg-purple-gradient rounded-2xl p-4 text-center">
-            <p className="text-xs text-purple-200">Current Balance</p>
-            <p className="text-2xl font-black font-mono-game text-white">{formatCurrency(wallet?.balance || 0)}</p>
+          {/* Balance Card */}
+          <div className="bg-purple-gradient rounded-2xl p-5 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+            </div>
+            <p className="text-xs text-purple-200 uppercase tracking-wider relative z-10">Current Balance</p>
+            <p className="text-3xl font-black font-mono-game text-white mt-2 relative z-10">{formatCurrency(wallet?.balance || 0)}</p>
           </div>
+
+          {/* Amount Input */}
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-[#FFC93D]">₹</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-[#FFC93D]">₹</span>
             <input type="number" placeholder="Enter amount" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="input-field pl-10 text-2xl font-mono-game font-bold text-center" />
+              className="input-field pl-12 text-2xl font-mono-game font-bold text-center" />
           </div>
+
+          {/* Quick Amount Chips */}
           <div className="grid grid-cols-4 gap-2">
             {chips.map(c => (
               <button key={c} onClick={() => setAmount(String(c))}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  amount === String(c) ? 'bg-[#FFC93D] text-black' : 'bg-[#1A1A1A] border border-[#2A2A2A] text-gray-300'
+                className={`py-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                  amount === String(c) 
+                    ? 'bg-gradient-to-b from-[#FFE58F] to-[#FFC93D] text-black shadow-lg shadow-[#FFC93D]/30' 
+                    : 'bg-[#1A1A1A] border border-[#2A2A2A] text-gray-300'
                 }`}>
                 {c >= 1000 ? `₹${c/1000}k` : `₹${c}`}
               </button>
             ))}
           </div>
-          <div className="card">
-            <p className="text-xs font-bold text-gray-400 uppercase mb-3">Payment Method</p>
-            <div className="space-y-2">
-              <button onClick={() => setMethod('upi')}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                  method === 'upi' ? 'border-[#FFC93D] bg-[#FFC93D]/5' : 'border-[#2A2A2A]'
-                }`}>
-                <span className="text-xl">📱</span>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-white">UPI</p>
-                  <p className="text-[10px] text-gray-500">Instant • GPay, PhonePe, Paytm</p>
-                </div>
-                {method === 'upi' && <span className="ml-auto text-[#FFC93D]">✓</span>}
-              </button>
-              <button onClick={() => setMethod('usdt')}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                  method === 'usdt' ? 'border-[#FFC93D] bg-[#FFC93D]/5' : 'border-[#2A2A2A]'
-                }`}>
-                <span className="text-xl">💰</span>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-white">USDT (TRC20)</p>
-                  <p className="text-[10px] text-gray-500">+5% bonus • Crypto</p>
-                </div>
-                {method === 'usdt' && <span className="ml-auto text-[#FFC93D]">✓</span>}
-              </button>
+
+          {/* Bonus Info */}
+          {amt >= 500 && (
+            <div className="bg-green-900/20 border border-green-800/50 rounded-xl p-3 flex items-center gap-2 animate-fade-in">
+              <span className="text-xl">🎁</span>
+              <div>
+                <p className="text-xs font-bold text-[#22C55E]">Bonus Unlocked!</p>
+                <p className="text-[10px] text-green-400/70">Get extra ₹{Math.floor(amt * 0.05)} on this deposit</p>
+              </div>
             </div>
-          </div>
-          <button onClick={() => { if (parseInt(amount) >= 100) setStep(2); else playSound('loss'); }}
-            className="btn-gold w-full">Continue</button>
+          )}
+
+          {/* Continue */}
+          <button onClick={handleContinue} className="btn-gold w-full mt-2">
+            Continue →
+          </button>
+          <p className="text-[10px] text-gray-500 text-center">Min ₹100 • Max ₹1,00,000</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="pb-24 animate-fade-in">
-      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
-        <button onClick={() => setStep(1)} className="text-xl">←</button>
-        <h1 className="text-lg font-bold">Payment</h1>
-      </div>
-      <div className="px-4 pt-3 space-y-4">
-        <div className="card text-center">
-          <p className="text-xs text-gray-400">Amount to Pay</p>
-          <p className="text-3xl font-black font-mono-game text-[#FFC93D] mt-1">{formatCurrency(parseInt(amount) || 0)}</p>
+  // Step 2: Method Selection
+  if (step === 2) {
+    const methods = [
+      { id: 'upi', icon: '📱', name: 'UPI', desc: 'GPay, PhonePe, Paytm', bonus: '', recommended: true },
+      { id: 'usdt', icon: '💰', name: 'USDT (TRC20)', desc: 'Crypto payment', bonus: '+5% Bonus', recommended: false },
+    ];
+    return (
+      <div className="pb-24 animate-fade-in min-h-screen bg-[#0A0A0A]">
+        <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
+          <button onClick={() => setStep(1)} className="text-xl">←</button>
+          <h1 className="text-lg font-bold">Payment Method</h1>
         </div>
-        {method === 'upi' ? (
-          <div className="card space-y-4">
-            <div className="text-center">
-              <div className="inline-block p-4 bg-white rounded-2xl">
-                <div className="w-48 h-48 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-4xl">📱</p>
-                    <p className="text-[10px] text-gray-600 mt-1 font-mono-game">{state.settings.upiVpa}</p>
+        <div className="px-4 pt-3 space-y-4">
+          {/* Amount Summary */}
+          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase">Amount</p>
+              <p className="text-2xl font-black font-mono-game text-white">{formatCurrency(amt)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-gray-500">To add</p>
+              <p className="text-sm font-bold text-[#22C55E]">+{formatCurrency(amt)}</p>
+            </div>
+          </div>
+
+          {/* Methods */}
+          <div className="space-y-3">
+            {methods.map(m => (
+              <button key={m.id} onClick={() => setMethod(m.id as 'upi' | 'usdt')}
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                  method === m.id 
+                    ? 'border-[#FFC93D] bg-[#FFC93D]/5 shadow-lg shadow-[#FFC93D]/10' 
+                    : 'border-[#2A2A2A] bg-[#141414]'
+                }`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
+                  method === m.id ? 'bg-[#FFC93D]/20' : 'bg-[#1A1A1A]'
+                }`}>
+                  {m.icon}
+                </div>
+                <div className="text-left flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-white">{m.name}</p>
+                    {m.recommended && (
+                      <span className="text-[9px] bg-[#22C55E]/20 text-[#22C55E] px-1.5 py-0.5 rounded-full font-bold">RECOMMENDED</span>
+                    )}
                   </div>
+                  <p className="text-[10px] text-gray-500">{m.desc}</p>
+                  {m.bonus && <p className="text-[10px] text-[#22C55E] font-bold mt-0.5">{m.bonus}</p>}
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  method === m.id ? 'border-[#FFC93D]' : 'border-[#3A3A3A]'
+                }`}>
+                  {method === m.id && <div className="w-2.5 h-2.5 rounded-full bg-[#FFC93D]" />}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button onClick={handleMethodContinue} className="btn-gold w-full mt-4">
+            Proceed to Pay →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Payment (QR / UPI Apps)
+  if (step === 3) {
+    const upiApps = [
+      { name: 'GPay', icon: '🟢', scheme: 'tez://upi/pay' },
+      { name: 'PhonePe', icon: '💜', scheme: 'phonepe://pay' },
+      { name: 'Paytm', icon: '💙', scheme: 'paytmmp://pay' },
+      { name: 'BHIM', icon: '🟠', scheme: 'bhim://pay' },
+      { name: 'Amazon', icon: '🛒', scheme: 'amazonpay://pay' },
+      { name: 'WhatsApp', icon: '💬', scheme: 'upi://pay' },
+    ];
+
+    return (
+      <div className="pb-24 animate-fade-in min-h-screen bg-[#0A0A0A]">
+        <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setStep(2)} className="text-xl">←</button>
+            <h1 className="text-lg font-bold">Pay via {method === 'upi' ? 'UPI' : 'USDT'}</h1>
+          </div>
+          <div className={`px-2 py-1 rounded-lg text-xs font-bold font-mono-game ${
+            timer > 60 ? 'bg-[#22C55E]/20 text-[#22C55E]' : 'bg-[#EF4444]/20 text-[#EF4444]'
+          }`}>
+            ⏱ {formatTimer(timer)}
+          </div>
+        </div>
+
+        <div className="px-4 pt-3 space-y-4">
+          {/* Order Info */}
+          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-gray-500 uppercase">Order ID</span>
+              <span className="text-[10px] text-gray-400 font-mono-game">{orderId}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-500 uppercase">Amount</span>
+              <span className="text-lg font-black font-mono-game text-[#FFC93D]">{formatCurrency(amt)}</span>
+            </div>
+          </div>
+
+          {method === 'upi' ? (
+            <>
+              {/* QR Code */}
+              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-5 text-center">
+                <p className="text-xs text-gray-400 mb-3">Scan QR Code to Pay</p>
+                <div className="inline-block p-3 bg-white rounded-2xl shadow-lg shadow-[#FFC93D]/10">
+                  {qrDataUrl ? (
+                    <img src={qrDataUrl} alt="UPI QR" className="w-56 h-56" />
+                  ) : (
+                    <div className="w-56 h-56 bg-gray-200 rounded-xl flex items-center justify-center">
+                      <p className="text-gray-500 text-sm">Loading QR...</p>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <code className="text-xs bg-[#1A1A1A] px-3 py-1.5 rounded-lg text-[#FFC93D] font-mono-game">{state.settings.upiVpa}</code>
+                  <button onClick={() => { navigator.clipboard?.writeText(state.settings.upiVpa); playSound('click'); }}
+                    className="text-xs text-purple-400 font-bold px-2 py-1 bg-purple-900/30 rounded">Copy</button>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Scan QR or use UPI ID</p>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <code className="text-xs bg-[#1A1A1A] px-3 py-1.5 rounded-lg text-[#FFC93D] font-mono-game">{state.settings.upiVpa}</code>
-                <button onClick={() => { navigator.clipboard?.writeText(state.settings.upiVpa); playSound('click'); }}
-                  className="text-xs text-purple-400">Copy</button>
+
+              {/* UPI Apps */}
+              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-3">Pay via App</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {upiApps.map((app, i) => (
+                    <button key={i} onClick={() => openUpiApp(app.scheme)}
+                      className="flex flex-col items-center gap-1 p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl active:scale-95 transition-transform">
+                      <span className="text-2xl">{app.icon}</span>
+                      <span className="text-[10px] font-bold text-gray-300">{app.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {['📱 GPay', '💜 PhonePe', '💙 Paytm', '🟠 BHIM', '🟢 Amazon', '📲 More'].map((app, i) => (
-                <button key={i} className="py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-[10px] font-bold text-gray-300 active:scale-95 transition-transform">
-                  {app}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="card space-y-3">
-            <p className="text-xs text-gray-400 text-center">Send USDT (TRC20) to:</p>
-            <code className="block text-[10px] bg-[#1A1A1A] p-3 rounded-lg text-[#FFC93D] font-mono-game break-all text-center">
-              {state.settings.usdtWallet}
-            </code>
-            <p className="text-[10px] text-amber-400 text-center">⚠️ Send exact amount • TRC20 network only</p>
-            <p className="text-xs text-[#22C55E] text-center font-bold">+5% bonus applied!</p>
-          </div>
-        )}
-        <button onClick={handleDeposit} className="btn-green w-full">
-          ✓ I've Paid {formatCurrency(parseInt(amount) || 0)}
-        </button>
+
+              {/* Instructions */}
+              <div className="bg-amber-900/10 border border-amber-800/30 rounded-2xl p-4">
+                <p className="text-xs font-bold text-amber-400 mb-2">📋 Instructions</p>
+                <ol className="text-[11px] text-amber-200/70 space-y-1 list-decimal list-inside">
+                  <li>Open any UPI app & scan QR / tap app button</li>
+                  <li>Pay exactly <b className="text-amber-300">{formatCurrency(amt)}</b></li>
+                  <li>Copy 12-digit UTR/Reference number</li>
+                  <li>Paste UTR below & submit</li>
+                </ol>
+              </div>
+
+              {/* UTR Input */}
+              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-bold text-gray-400 uppercase">Enter UTR / Reference No.</p>
+                <input type="text" placeholder="12-digit UTR number" value={utr}
+                  onChange={e => setUtr(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                  className="input-field text-center font-mono-game text-lg tracking-wider" />
+                <p className="text-[10px] text-gray-500 text-center">
+                  {utr.length > 0 ? `${12 - utr.length} digits remaining` : 'Find UTR in your payment app'}
+                </p>
+              </div>
+
+              <button onClick={handleSubmitUtr} disabled={utr.length < 10}
+                className={`w-full py-4 rounded-xl font-black text-sm uppercase ${
+                  utr.length >= 10 ? 'btn-green' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}>
+                ✓ Submit & Confirm Payment
+              </button>
+            </>
+          ) : (
+            <>
+              {/* USDT Payment */}
+              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-5 text-center">
+                <p className="text-xs text-gray-400 mb-3">Send USDT (TRC20) to this address</p>
+                <div className="inline-block p-3 bg-white rounded-2xl">
+                  {qrDataUrl ? (
+                    <img src={qrDataUrl} alt="USDT QR" className="w-48 h-48" />
+                  ) : (
+                    <div className="w-48 h-48 bg-gray-200 rounded-xl flex items-center justify-center">
+                      <p className="text-gray-500 text-sm">Loading...</p>
+                    </div>
+                  )}
+                </div>
+                <code className="block text-[10px] bg-[#1A1A1A] p-3 rounded-lg text-[#FFC93D] font-mono-game break-all mt-3">
+                  {state.settings.usdtWallet}
+                </code>
+                <button onClick={() => { navigator.clipboard?.writeText(state.settings.usdtWallet); playSound('click'); }}
+                  className="text-xs text-purple-400 font-bold mt-2 px-3 py-1 bg-purple-900/30 rounded">Copy Address</button>
+              </div>
+
+              <div className="bg-green-900/10 border border-green-800/30 rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-[#22C55E]">+5% BONUS</p>
+                <p className="text-xs text-green-400/70 mt-1">You'll receive {formatCurrency(amt + amt * 0.05)}</p>
+              </div>
+
+              <div className="bg-red-900/10 border border-red-800/30 rounded-2xl p-4">
+                <p className="text-xs font-bold text-red-400 mb-2">⚠️ Important</p>
+                <ul className="text-[11px] text-red-200/70 space-y-1 list-disc list-inside">
+                  <li>Send only via TRC20 network</li>
+                  <li>Send exact amount</li>
+                  <li>Other networks = loss of funds</li>
+                </ul>
+              </div>
+
+              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-bold text-gray-400 uppercase">Enter Transaction Hash</p>
+                <input type="text" placeholder="TX Hash (40+ chars)" value={utr}
+                  onChange={e => setUtr(e.target.value)}
+                  className="input-field text-center font-mono-game text-xs" />
+              </div>
+
+              <button onClick={handleSubmitUtr} disabled={utr.length < 10}
+                className={`w-full py-4 rounded-xl font-black text-sm uppercase ${
+                  utr.length >= 10 ? 'btn-green' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}>
+                ✓ Submit Transaction
+              </button>
+            </>
+          )}
+        </div>
       </div>
+    );
+  }
+
+  // Step 4: Verifying
+  if (step === 4) {
+    return (
+      <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center p-6">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-[#2A2A2A] border-t-[#FFC93D] rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-2xl">💳</span>
+          </div>
+        </div>
+        <h2 className="text-xl font-black text-white mt-6">Verifying Payment</h2>
+        <p className="text-sm text-gray-400 mt-2">Please wait...</p>
+        <div className="mt-6 w-64 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-[#22C55E]">✓</span>
+            <span className="text-sm text-gray-300">Payment submitted</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[#FFC93D] animate-pulse">⟳</span>
+            <span className="text-sm text-gray-300">Verifying with bank</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-gray-600">○</span>
+            <span className="text-sm text-gray-500">Credit to wallet</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 5: Success
+  return (
+    <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center p-6 animate-fade-in">
+      <div className="w-20 h-20 rounded-full bg-[#22C55E]/20 flex items-center justify-center animate-bounce-in">
+        <div className="w-14 h-14 rounded-full bg-[#22C55E] flex items-center justify-center">
+          <span className="text-3xl">✓</span>
+        </div>
+      </div>
+      <h2 className="text-2xl font-black text-white mt-6">Payment Successful!</h2>
+      <p className="text-4xl font-black font-mono-game text-[#22C55E] mt-3">{formatCurrency(amt)}</p>
+      <p className="text-sm text-gray-400 mt-1">credited to your wallet</p>
+
+      <div className="w-full max-w-xs bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 mt-6 space-y-2">
+        <div className="flex justify-between">
+          <span className="text-xs text-gray-500">Transaction ID</span>
+          <span className="text-xs text-white font-mono-game">{orderId}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-gray-500">Method</span>
+          <span className="text-xs text-white">{method.toUpperCase()}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-gray-500">Status</span>
+          <span className="text-xs text-[#22C55E] font-bold">✓ Completed</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-gray-500">Time</span>
+          <span className="text-xs text-white">{new Date().toLocaleTimeString()}</span>
+        </div>
+      </div>
+
+      <button onClick={() => navigate('home')} className="btn-gold w-full max-w-xs mt-6">
+        ← Back to Home
+      </button>
     </div>
   );
 }

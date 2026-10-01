@@ -172,7 +172,7 @@ export function SlotsGame({ state, setState, navigate }: { state: AppState; setS
   );
 }
 
-// ============ GAME 2: CRASH ============
+// ============ GAME 2: CRASH (Real Plane) ============
 export function CrashGame({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const wallet = getCurrentWallet(state);
   const [bet, setBet] = useState(100);
@@ -186,6 +186,21 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cashOutMultRef = useRef(1);
   const mountedRef = useRef(true);
+  const starsRef = useRef<Array<{x: number, y: number, size: number, speed: number}>>([]);
+
+  // Initialize stars
+  useEffect(() => {
+    const stars = [];
+    for (let i = 0; i < 50; i++) {
+      stars.push({
+        x: Math.random() * 360,
+        y: Math.random() * 240,
+        size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 0.5 + 0.2
+      });
+    }
+    starsRef.current = stars;
+  }, []);
 
   const generateCrashPoint = () => {
     const r = Math.random();
@@ -196,14 +211,35 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
     return 20 + Math.random() * 30;
   };
 
-  const drawChart = useCallback((m: number, cp: number) => {
+  const drawChart = useCallback((m: number, cp: number, crashed: boolean) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const w = canvas.width;
     const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+
+    // Clear with gradient background
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, '#0A0A0A');
+    gradient.addColorStop(1, '#141414');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+
+    // Draw stars
+    starsRef.current.forEach(star => {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.random() * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+      star.y += star.speed;
+      if (star.y > h) {
+        star.y = 0;
+        star.x = Math.random() * w;
+      }
+    });
+
+    // Grid lines
     ctx.strokeStyle = '#2A2A2A';
     ctx.lineWidth = 0.5;
     for (let i = 0; i < 5; i++) {
@@ -212,25 +248,56 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
       ctx.lineTo(w, h - (h / 5) * i);
       ctx.stroke();
     }
+
+    // Draw curve
     const elapsed = Math.log(Math.max(1, m)) / 0.15;
     const points = Math.min(Math.floor(elapsed * 20), w);
     if (points > 0) {
+      // Glow effect
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = crashed ? '#EF4444' : '#22C55E';
+      
       ctx.beginPath();
-      ctx.strokeStyle = '#22C55E';
+      ctx.strokeStyle = crashed ? '#EF4444' : '#22C55E';
       ctx.lineWidth = 3;
+      
+      let lastX = 0, lastY = h;
       for (let i = 0; i <= points; i++) {
         const t = i / 20;
         const x = (i / points) * w;
         const yVal = Math.pow(Math.E, 0.15 * t);
-        const y = h - (yVal / Math.max(cp, m)) * h * 0.9;
-        if (i === 0) ctx.moveTo(x, Math.max(10, y));
-        else ctx.lineTo(x, Math.max(10, y));
+        const y = h - (yVal / Math.max(cp, m)) * h * 0.85;
+        if (i === 0) {
+          ctx.moveTo(x, Math.max(20, y));
+        } else {
+          ctx.lineTo(x, Math.max(20, y));
+        }
+        lastX = x;
+        lastY = Math.max(20, y);
       }
       ctx.stroke();
+      
+      // Fill under curve
+      ctx.lineTo(lastX, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      const fillGradient = ctx.createLinearGradient(0, 0, 0, h);
+      fillGradient.addColorStop(0, crashed ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)');
+      fillGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = fillGradient;
+      ctx.fill();
+      
+      ctx.shadowBlur = 0;
+
+      // Draw plane/rocket at tip
+      ctx.font = '24px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✈️', lastX, lastY - 15);
     }
   }, []);
 
-  // Game loop - runs each round
+  // Game loop
   useEffect(() => {
     mountedRef.current = true;
     const cp = generateCrashPoint();
@@ -262,12 +329,13 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
             setMultiplier(cp);
             cashOutMultRef.current = cp;
             setPhase('crashed');
+            drawChart(cp, cp, true);
             playSound('explosion');
             return;
           }
           setMultiplier(m);
           cashOutMultRef.current = m;
-          drawChart(m, cp);
+          drawChart(m, cp, false);
           requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
@@ -280,7 +348,7 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
     };
   }, [round, drawChart]);
 
-  // Auto restart after crash
+  // Auto restart
   useEffect(() => {
     if (phase === 'crashed') {
       const timer = setTimeout(() => {
@@ -290,7 +358,7 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
     }
   }, [phase]);
 
-  // Handle loss on crash
+  // Handle loss
   useEffect(() => {
     if (phase === 'crashed' && betPlaced && !cashedOut) {
       const commission = Math.round(bet * state.settings.commissionRate * 100) / 100;
@@ -329,38 +397,39 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
     <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
         <button onClick={() => navigate('home')} className="text-xl">←</button>
-        <h1 className="text-lg font-bold">🚀 Crash</h1>
+        <h1 className="text-lg font-bold">✈️ Plane</h1>
         <span className="text-xs font-mono-game font-bold text-[#FFC93D]">{formatCurrency(wallet?.balance || 0)}</span>
       </div>
 
       <div className="flex-1 flex flex-col px-4 pt-3 pb-8">
-        <div className="relative bg-[#141414] rounded-2xl border border-[#2A2A2A] overflow-hidden h-52">
-          <canvas ref={canvasRef} width={360} height={208} className="w-full h-full" />
+        {/* Canvas */}
+        <div className="relative bg-[#141414] rounded-2xl border border-[#2A2A2A] overflow-hidden h-64">
+          <canvas ref={canvasRef} width={360} height={256} className="w-full h-full" />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             {phase === 'waiting' && (
               <div className="text-center">
-                <p className="text-4xl font-black font-mono-game text-white">{countdown}s</p>
-                <p className="text-xs text-gray-400 mt-1">Next round starting...</p>
+                <p className="text-5xl font-black font-mono-game text-white">{countdown}s</p>
+                <p className="text-sm text-gray-400 mt-2">Next round starting...</p>
               </div>
             )}
             {phase === 'flying' && (
-              <p className={`text-5xl font-black font-mono-game ${cashedOut ? 'text-[#22C55E]' : 'text-white'}`}>
+              <p className={`text-6xl font-black font-mono-game ${cashedOut ? 'text-[#22C55E]' : 'text-white'}`} style={{textShadow: '0 0 20px rgba(34, 197, 94, 0.5)'}}>
                 {multiplier.toFixed(2)}x
               </p>
             )}
             {phase === 'crashed' && (
               <div className="text-center animate-shake">
-                <p className="text-3xl font-black font-mono-game text-[#EF4444]">CRASHED!</p>
-                <p className="text-xl font-mono-game text-[#EF4444]/60 mt-1">{crashPoint.toFixed(2)}x</p>
+                <p className="text-4xl font-black font-mono-game text-[#EF4444]" style={{textShadow: '0 0 20px rgba(239, 68, 68, 0.5)'}}>CRASHED!</p>
+                <p className="text-2xl font-mono-game text-[#EF4444]/60 mt-2">{crashPoint.toFixed(2)}x</p>
               </div>
             )}
           </div>
         </div>
 
         {cashedOut && (
-          <div className="text-center mt-2 animate-bounce-in">
-            <p className="text-lg font-bold text-[#22C55E]">✓ Cashed out at {multiplier.toFixed(2)}x</p>
-            <p className="text-sm font-mono-game text-[#22C55E]">+{formatCurrency(Math.round(bet * multiplier))}</p>
+          <div className="text-center mt-3 animate-bounce-in">
+            <p className="text-xl font-bold text-[#22C55E]">✓ Cashed out at {multiplier.toFixed(2)}x</p>
+            <p className="text-base font-mono-game text-[#22C55E]">+{formatCurrency(Math.round(bet * multiplier))}</p>
           </div>
         )}
 
@@ -375,7 +444,7 @@ export function CrashGame({ state, setState, navigate }: { state: AppState; setS
           </div>
 
           {phase === 'flying' && betPlaced && !cashedOut ? (
-            <button onClick={cashOut} className="btn-red w-full mt-3 py-4 text-lg">
+            <button onClick={cashOut} className="btn-red w-full mt-3 py-4 text-lg animate-pulse-gold">
               💰 CASH OUT {formatCurrency(Math.round(bet * multiplier))}
             </button>
           ) : phase === 'waiting' && !betPlaced ? (
