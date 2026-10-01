@@ -387,7 +387,7 @@ function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: stri
   );
 }
 
-// ============ Deposit Screen (Real Flow) ============
+// ============ Deposit Screen (Real Flow with Deep Links) ============
 function DepositScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'upi' | 'usdt'>('upi');
@@ -396,6 +396,7 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [timer, setTimer] = useState(300); // 5 min
   const [orderId, setOrderId] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
   const wallet = getCurrentWallet(state);
   const chips = [100, 300, 500, 1000, 2000, 5000, 10000, 25000];
   const timerRef = useRef<number>(0);
@@ -409,17 +410,23 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
       setOrderId(oid);
       let data = '';
       if (method === 'upi') {
-        data = `upi://pay?pa=${state.settings.upiVpa}&pn=Legacy+Win&am=${amt}&cu=INR&tn=${oid}`;
+        // Real UPI URI with all parameters
+        data = `upi://pay?pa=${encodeURIComponent(state.settings.upiVpa)}&pn=${encodeURIComponent('Legacy Win')}&am=${amt}&cu=INR&tn=${encodeURIComponent(oid)}&mc=0000`;
       } else {
-        data = `tron:${state.settings.usdtWallet}`;
+        data = state.settings.usdtWallet;
       }
       import('qrcode').then(QRCode => {
-        QRCode.toDataURL(data, { width: 280, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+        QRCode.toDataURL(data, { 
+          width: 300, 
+          margin: 2, 
+          color: { dark: '#000000', light: '#ffffff' },
+          errorCorrectionLevel: 'H'
+        })
           .then((url: string) => setQrDataUrl(url))
           .catch(() => setQrDataUrl(''));
       });
     }
-  }, [step, method, amt]);
+  }, [step, method, amt, state.settings.upiVpa, state.settings.usdtWallet]);
 
   // Timer countdown
   useEffect(() => {
@@ -445,8 +452,16 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
   };
 
   const handleContinue = () => {
-    if (amt < state.settings.minDeposit) { playSound('loss'); return; }
-    if (amt > state.settings.maxDeposit) { playSound('loss'); return; }
+    if (amt < state.settings.minDeposit) { 
+      playSound('loss');
+      alert(`Minimum deposit is ₹${state.settings.minDeposit}`);
+      return; 
+    }
+    if (amt > state.settings.maxDeposit) { 
+      playSound('loss');
+      alert(`Maximum deposit is ₹${state.settings.maxDeposit.toLocaleString()}`);
+      return; 
+    }
     playSound('click');
     setStep(2);
   };
@@ -456,13 +471,102 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
     setStep(3);
   };
 
-  const openUpiApp = (scheme: string) => {
-    const upiUri = `upi://pay?pa=${state.settings.upiVpa}&pn=Legacy+Win&am=${amt}&cu=INR&tn=${orderId}`;
-    window.location.href = scheme || upiUri;
+  // Real UPI deep links for all apps with Android Intent fallback
+  const openUpiApp = (appId: string) => {
+    const upiParams = `pa=${encodeURIComponent(state.settings.upiVpa)}&pn=${encodeURIComponent('Legacy Win')}&am=${amt}&cu=INR&tn=${encodeURIComponent(orderId)}&mc=0000`;
+    const upiUri = `upi://pay?${upiParams}`;
+    
+    // Deep links for different UPI apps
+    const deepLinks: Record<string, { scheme: string; package?: string }> = {
+      'gpay': { 
+        scheme: `tez://upi/pay?${upiParams}`,
+        package: 'com.google.android.apps.nbu.paisa.user'
+      },
+      'phonepe': { 
+        scheme: `phonepe://pay?${upiParams}`,
+        package: 'com.phonepe.app'
+      },
+      'paytm': { 
+        scheme: `paytmmp://pay?${upiParams}`,
+        package: 'net.one97.paytm'
+      },
+      'bhim': { 
+        scheme: `bhim://pay?${upiParams}`,
+        package: 'in.org.npci.upiapp'
+      },
+      'amazon': { 
+        scheme: `amazonpay://pay?${upiParams}`,
+        package: 'com.amazon.mShop.android.shopping'
+      },
+      'whatsapp': { 
+        scheme: `whatsapp://pay?${upiParams}`,
+        package: 'com.whatsapp'
+      },
+      'default': { scheme: upiUri }
+    };
+
+    const app = deepLinks[appId] || deepLinks['default'];
+    const isAndroid = /android/i.test(navigator.userAgent);
+    
+    // For Android: Try intent URL first (more reliable)
+    if (isAndroid && app.package) {
+      const intentUrl = `intent://pay?${upiParams}#Intent;scheme=${app.scheme.split(':')[0]};package=${app.package};end`;
+      
+      // Try intent first
+      const startTime = Date.now();
+      window.location.href = intentUrl;
+      
+      // Fallback after 1.5s if app didn't open
+      setTimeout(() => {
+        if (Date.now() - startTime < 2000 && document.hasFocus()) {
+          // Try deep link scheme
+          window.location.href = app.scheme;
+          
+          // Final fallback: generic UPI
+          setTimeout(() => {
+            if (document.hasFocus()) {
+              window.location.href = upiUri;
+            }
+          }, 1500);
+        }
+      }, 1500);
+    } else {
+      // For iOS/Desktop: Try scheme directly
+      try {
+        window.location.href = app.scheme;
+        
+        // Fallback to generic UPI
+        setTimeout(() => {
+          if (document.hasFocus()) {
+            window.location.href = upiUri;
+          }
+        }, 2000);
+      } catch (e) {
+        window.location.href = upiUri;
+      }
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      playSound('click');
+      alert(`${label} copied to clipboard!`);
+    }).catch(() => {
+      alert('Failed to copy. Please copy manually.');
+    });
   };
 
   const handleSubmitUtr = () => {
-    if (utr.length < 10) { playSound('loss'); return; }
+    if (utr.length < 10) { 
+      playSound('loss');
+      alert('Please enter valid UTR number (minimum 10 digits)');
+      return; 
+    }
+    if (utr.length > 20) {
+      playSound('loss');
+      alert('UTR number is too long');
+      return;
+    }
     playSound('click');
     setStep(4);
 
@@ -613,159 +717,369 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
     );
   }
 
-  // Step 3: Payment (QR / UPI Apps)
+  // Step 3: Payment (QR / UPI Apps with Real Deep Links)
   if (step === 3) {
     const upiApps = [
-      { name: 'GPay', icon: '🟢', scheme: 'tez://upi/pay' },
-      { name: 'PhonePe', icon: '💜', scheme: 'phonepe://pay' },
-      { name: 'Paytm', icon: '💙', scheme: 'paytmmp://pay' },
-      { name: 'BHIM', icon: '🟠', scheme: 'bhim://pay' },
-      { name: 'Amazon', icon: '🛒', scheme: 'amazonpay://pay' },
-      { name: 'WhatsApp', icon: '💬', scheme: 'upi://pay' },
+      { id: 'gpay', name: 'Google Pay', icon: '🟢', color: 'from-green-500 to-green-700' },
+      { id: 'phonepe', name: 'PhonePe', icon: '💜', color: 'from-purple-500 to-purple-700' },
+      { id: 'paytm', name: 'Paytm', icon: '💙', color: 'from-blue-500 to-blue-700' },
+      { id: 'bhim', name: 'BHIM', icon: '🟠', color: 'from-orange-500 to-orange-700' },
+      { id: 'amazon', name: 'Amazon Pay', icon: '🛒', color: 'from-yellow-500 to-yellow-700' },
+      { id: 'whatsapp', name: 'WhatsApp', icon: '💬', color: 'from-green-400 to-green-600' },
+      { id: 'default', name: 'Any UPI App', icon: '📱', color: 'from-gray-500 to-gray-700' },
     ];
 
+    const timerProgress = (timer / 300) * 100;
+    const isTimerExpired = timer === 0;
+
     return (
-      <div className="pb-24 animate-fade-in min-h-screen bg-[#0A0A0A]">
-        <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setStep(2)} className="text-xl">←</button>
-            <h1 className="text-lg font-bold">Pay via {method === 'upi' ? 'UPI' : 'USDT'}</h1>
+      <div className="pb-24 animate-fade-in min-h-screen bg-gradient-to-b from-[#0A0A0A] to-[#1a1a2e]">
+        {/* Header with Timer */}
+        <div className="sticky top-0 z-30 glass px-4 py-3 safe-top border-b border-[#2A2A2A]">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setStep(2)} className="text-2xl active:scale-90 transition-transform">←</button>
+              <h1 className="text-lg font-black bg-gradient-to-r from-[#FFE58F] to-[#FFC93D] bg-clip-text text-transparent">
+                Pay via {method === 'upi' ? 'UPI' : 'USDT'}
+              </h1>
+            </div>
+            <div className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono-game flex items-center gap-1 ${
+              timer > 60 ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30' : 
+              timer > 0 ? 'bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/30 animate-pulse' :
+              'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30'
+            }`}>
+              <span>⏱</span>
+              <span>{formatTimer(timer)}</span>
+            </div>
           </div>
-          <div className={`px-2 py-1 rounded-lg text-xs font-bold font-mono-game ${
-            timer > 60 ? 'bg-[#22C55E]/20 text-[#22C55E]' : 'bg-[#EF4444]/20 text-[#EF4444]'
-          }`}>
-            ⏱ {formatTimer(timer)}
+          {/* Timer Progress Bar */}
+          <div className="w-full h-1.5 bg-[#2A2A2A] rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-1000 ${
+                timer > 60 ? 'bg-gradient-to-r from-[#22C55E] to-[#16A34A]' :
+                timer > 0 ? 'bg-gradient-to-r from-[#F59E0B] to-[#D97706]' :
+                'bg-gradient-to-r from-[#EF4444] to-[#DC2626]'
+              }`}
+              style={{ width: `${timerProgress}%` }}
+            />
           </div>
         </div>
 
-        <div className="px-4 pt-3 space-y-4">
-          {/* Order Info */}
-          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-gray-500 uppercase">Order ID</span>
-              <span className="text-[10px] text-gray-400 font-mono-game">{orderId}</span>
+        <div className="px-4 pt-4 space-y-4">
+          {/* Order Info Card */}
+          <div className="bg-gradient-to-r from-[#141414] to-[#1a1a2e] border-2 border-[#FFC93D]/30 rounded-2xl p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Order ID</p>
+                <p className="text-xs text-gray-300 font-mono-game mt-0.5">{orderId}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Amount</p>
+                <p className="text-2xl font-black font-mono-game text-[#FFC93D] mt-0.5">{formatCurrency(amt)}</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-500 uppercase">Amount</span>
-              <span className="text-lg font-black font-mono-game text-[#FFC93D]">{formatCurrency(amt)}</span>
-            </div>
+            {isTimerExpired && (
+              <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-xl p-3 mt-2">
+                <p className="text-xs text-[#EF4444] font-bold text-center">⚠️ QR Expired! Please go back and retry.</p>
+              </div>
+            )}
           </div>
 
           {method === 'upi' ? (
             <>
-              {/* QR Code */}
-              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-5 text-center">
-                <p className="text-xs text-gray-400 mb-3">Scan QR Code to Pay</p>
-                <div className="inline-block p-3 bg-white rounded-2xl shadow-lg shadow-[#FFC93D]/10">
+              {/* QR Code Section */}
+              <div className="bg-gradient-to-b from-[#141414] to-[#0A0A0A] border-2 border-[#2A2A2A] rounded-3xl p-6 text-center shadow-2xl">
+                <p className="text-sm text-gray-400 mb-4 font-bold">📱 Scan QR Code to Pay</p>
+                <div className="inline-block p-4 bg-white rounded-3xl shadow-xl shadow-[#FFC93D]/20 border-4 border-[#FFC93D]/30">
                   {qrDataUrl ? (
-                    <img src={qrDataUrl} alt="UPI QR" className="w-56 h-56" />
+                    <img src={qrDataUrl} alt="UPI QR" className="w-64 h-64" />
                   ) : (
-                    <div className="w-56 h-56 bg-gray-200 rounded-xl flex items-center justify-center">
-                      <p className="text-gray-500 text-sm">Loading QR...</p>
+                    <div className="w-64 h-64 bg-gray-200 rounded-2xl flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-[#FFC93D] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm">Generating QR...</p>
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="mt-3 flex items-center justify-center gap-2">
-                  <code className="text-xs bg-[#1A1A1A] px-3 py-1.5 rounded-lg text-[#FFC93D] font-mono-game">{state.settings.upiVpa}</code>
-                  <button onClick={() => { navigator.clipboard?.writeText(state.settings.upiVpa); playSound('click'); }}
-                    className="text-xs text-purple-400 font-bold px-2 py-1 bg-purple-900/30 rounded">Copy</button>
+                
+                {/* UPI ID with Copy */}
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <div className="bg-[#1A1A1A] px-4 py-2 rounded-xl border border-[#2A2A2A]">
+                    <p className="text-[10px] text-gray-500 uppercase">UPI ID</p>
+                    <code className="text-sm text-[#FFC93D] font-mono-game font-bold">{state.settings.upiVpa}</code>
+                  </div>
+                  <button 
+                    onClick={() => copyToClipboard(state.settings.upiVpa, 'UPI ID')}
+                    className="px-4 py-3 bg-gradient-to-b from-purple-500 to-purple-700 rounded-xl text-xs font-bold text-white active:scale-95 transition-transform shadow-lg shadow-purple-500/30">
+                    📋 Copy
+                  </button>
                 </div>
               </div>
 
-              {/* UPI Apps */}
-              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-3">Pay via App</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {upiApps.map((app, i) => (
-                    <button key={i} onClick={() => openUpiApp(app.scheme)}
-                      className="flex flex-col items-center gap-1 p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl active:scale-95 transition-transform">
-                      <span className="text-2xl">{app.icon}</span>
-                      <span className="text-[10px] font-bold text-gray-300">{app.name}</span>
+              {/* UPI Apps Grid */}
+              <div className="bg-[#141414] border-2 border-[#2A2A2A] rounded-3xl p-5 shadow-xl">
+                <p className="text-sm font-black text-gray-300 uppercase mb-4 text-center">⚡ Quick Pay via App</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {upiApps.map((app) => (
+                    <button 
+                      key={app.id} 
+                      onClick={() => openUpiApp(app.id)}
+                      disabled={isTimerExpired}
+                      className={`flex flex-col items-center gap-2 p-4 bg-gradient-to-b ${app.color} rounded-2xl active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}>
+                      <span className="text-3xl">{app.icon}</span>
+                      <span className="text-[11px] font-bold text-white text-center leading-tight">{app.name}</span>
                     </button>
                   ))}
                 </div>
+                <p className="text-[10px] text-gray-500 text-center mt-3">Tap to open app with payment details</p>
               </div>
 
-              {/* Instructions */}
-              <div className="bg-amber-900/10 border border-amber-800/30 rounded-2xl p-4">
-                <p className="text-xs font-bold text-amber-400 mb-2">📋 Instructions</p>
-                <ol className="text-[11px] text-amber-200/70 space-y-1 list-decimal list-inside">
-                  <li>Open any UPI app & scan QR / tap app button</li>
-                  <li>Pay exactly <b className="text-amber-300">{formatCurrency(amt)}</b></li>
-                  <li>Copy 12-digit UTR/Reference number</li>
-                  <li>Paste UTR below & submit</li>
-                </ol>
+              {/* Instructions Overlay Button */}
+              <button 
+                onClick={() => setShowTerms(true)}
+                className="w-full bg-gradient-to-r from-amber-900/30 to-amber-800/30 border-2 border-amber-700/50 rounded-2xl p-4 text-left active:scale-98 transition-transform">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📋</span>
+                    <div>
+                      <p className="text-xs font-bold text-amber-400">View Instructions</p>
+                      <p className="text-[10px] text-amber-300/70">Step-by-step payment guide</p>
+                    </div>
+                  </div>
+                  <span className="text-amber-400">→</span>
+                </div>
+              </button>
+
+              {/* UTR Input Section */}
+              <div className="bg-gradient-to-b from-[#141414] to-[#0A0A0A] border-2 border-[#2A2A2A] rounded-3xl p-5 shadow-xl space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔢</span>
+                  <p className="text-sm font-black text-gray-300 uppercase">Enter UTR / Reference Number</p>
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Enter 12-digit UTR number" 
+                  value={utr}
+                  onChange={e => setUtr(e.target.value.replace(/\D/g, '').slice(0, 20))}
+                  className="input-field text-center font-mono-game text-xl tracking-widest border-2 focus:border-[#FFC93D]"
+                  maxLength={20}
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-gray-500">
+                    {utr.length > 0 ? (
+                      <span className={utr.length >= 10 ? 'text-[#22C55E]' : 'text-[#F59E0B]'}>
+                        ✓ {utr.length} digits entered
+                      </span>
+                    ) : (
+                      'Find UTR in your payment app after payment'
+                    )}
+                  </p>
+                  {utr.length > 0 && utr.length < 10 && (
+                    <p className="text-[10px] text-[#EF4444]">Minimum 10 digits required</p>
+                  )}
+                </div>
               </div>
 
-              {/* UTR Input */}
-              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 space-y-3">
-                <p className="text-xs font-bold text-gray-400 uppercase">Enter UTR / Reference No.</p>
-                <input type="text" placeholder="12-digit UTR number" value={utr}
-                  onChange={e => setUtr(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                  className="input-field text-center font-mono-game text-lg tracking-wider" />
-                <p className="text-[10px] text-gray-500 text-center">
-                  {utr.length > 0 ? `${12 - utr.length} digits remaining` : 'Find UTR in your payment app'}
-                </p>
-              </div>
-
-              <button onClick={handleSubmitUtr} disabled={utr.length < 10}
-                className={`w-full py-4 rounded-xl font-black text-sm uppercase ${
-                  utr.length >= 10 ? 'btn-green' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              {/* Submit Button */}
+              <button 
+                onClick={handleSubmitUtr} 
+                disabled={utr.length < 10 || isTimerExpired}
+                className={`w-full py-5 rounded-2xl font-black text-base uppercase shadow-xl transition-all ${
+                  utr.length >= 10 && !isTimerExpired 
+                    ? 'btn-green hover:scale-105 active:scale-95' 
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}>
-                ✓ Submit & Confirm Payment
+                {isTimerExpired ? '⚠️ QR Expired' : utr.length < 10 ? `Enter UTR (${10 - utr.length} more digits)` : '✓ Submit & Confirm Payment'}
               </button>
             </>
           ) : (
             <>
               {/* USDT Payment */}
-              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-5 text-center">
-                <p className="text-xs text-gray-400 mb-3">Send USDT (TRC20) to this address</p>
-                <div className="inline-block p-3 bg-white rounded-2xl">
+              <div className="bg-gradient-to-b from-[#141414] to-[#0A0A0A] border-2 border-[#2A2A2A] rounded-3xl p-6 text-center shadow-2xl">
+                <p className="text-sm text-gray-400 mb-4 font-bold">💰 Send USDT (TRC20) to this address</p>
+                <div className="inline-block p-4 bg-white rounded-3xl shadow-xl border-4 border-[#FFC93D]/30">
                   {qrDataUrl ? (
-                    <img src={qrDataUrl} alt="USDT QR" className="w-48 h-48" />
+                    <img src={qrDataUrl} alt="USDT QR" className="w-56 h-56" />
                   ) : (
-                    <div className="w-48 h-48 bg-gray-200 rounded-xl flex items-center justify-center">
-                      <p className="text-gray-500 text-sm">Loading...</p>
+                    <div className="w-56 h-56 bg-gray-200 rounded-2xl flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-[#FFC93D] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm">Generating QR...</p>
+                      </div>
                     </div>
                   )}
                 </div>
-                <code className="block text-[10px] bg-[#1A1A1A] p-3 rounded-lg text-[#FFC93D] font-mono-game break-all mt-3">
-                  {state.settings.usdtWallet}
-                </code>
-                <button onClick={() => { navigator.clipboard?.writeText(state.settings.usdtWallet); playSound('click'); }}
-                  className="text-xs text-purple-400 font-bold mt-2 px-3 py-1 bg-purple-900/30 rounded">Copy Address</button>
+                
+                <div className="mt-4 bg-[#1A1A1A] p-3 rounded-xl border border-[#2A2A2A]">
+                  <p className="text-[10px] text-gray-500 uppercase mb-1">Wallet Address</p>
+                  <code className="text-[11px] text-[#FFC93D] font-mono-game break-all">
+                    {state.settings.usdtWallet}
+                  </code>
+                </div>
+                
+                <button 
+                  onClick={() => copyToClipboard(state.settings.usdtWallet, 'Wallet Address')}
+                  className="mt-3 px-6 py-2.5 bg-gradient-to-b from-purple-500 to-purple-700 rounded-xl text-xs font-bold text-white active:scale-95 transition-transform shadow-lg shadow-purple-500/30">
+                  📋 Copy Address
+                </button>
               </div>
 
-              <div className="bg-green-900/10 border border-green-800/30 rounded-2xl p-4 text-center">
-                <p className="text-2xl font-black text-[#22C55E]">+5% BONUS</p>
-                <p className="text-xs text-green-400/70 mt-1">You'll receive {formatCurrency(amt + amt * 0.05)}</p>
+              {/* Bonus Card */}
+              <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-2 border-[#22C55E]/50 rounded-3xl p-5 text-center shadow-xl">
+                <p className="text-3xl font-black text-[#22C55E]">+5% BONUS</p>
+                <p className="text-sm text-green-400/80 mt-2">You'll receive {formatCurrency(amt + amt * 0.05)}</p>
               </div>
 
-              <div className="bg-red-900/10 border border-red-800/30 rounded-2xl p-4">
-                <p className="text-xs font-bold text-red-400 mb-2">⚠️ Important</p>
-                <ul className="text-[11px] text-red-200/70 space-y-1 list-disc list-inside">
-                  <li>Send only via TRC20 network</li>
-                  <li>Send exact amount</li>
-                  <li>Other networks = loss of funds</li>
+              {/* Warning */}
+              <div className="bg-gradient-to-r from-red-900/30 to-red-800/30 border-2 border-[#EF4444]/50 rounded-3xl p-5 shadow-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">⚠️</span>
+                  <p className="text-sm font-black text-[#EF4444]">IMPORTANT</p>
+                </div>
+                <ul className="text-xs text-red-200/80 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#EF4444] mt-0.5">•</span>
+                    <span>Send only via <b className="text-[#EF4444]">TRC20 (TRON)</b> network</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#EF4444] mt-0.5">•</span>
+                    <span>Send <b className="text-[#EF4444]">exact amount</b> in USDT</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#EF4444] mt-0.5">•</span>
+                    <span>Other networks = <b className="text-[#EF4444]">permanent loss of funds</b></span>
+                  </li>
                 </ul>
               </div>
 
-              <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 space-y-3">
-                <p className="text-xs font-bold text-gray-400 uppercase">Enter Transaction Hash</p>
-                <input type="text" placeholder="TX Hash (40+ chars)" value={utr}
+              {/* Transaction Hash Input */}
+              <div className="bg-gradient-to-b from-[#141414] to-[#0A0A0A] border-2 border-[#2A2A2A] rounded-3xl p-5 space-y-3 shadow-xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔗</span>
+                  <p className="text-sm font-black text-gray-300 uppercase">Enter Transaction Hash</p>
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="TX Hash (40+ characters)" 
+                  value={utr}
                   onChange={e => setUtr(e.target.value)}
-                  className="input-field text-center font-mono-game text-xs" />
+                  className="input-field text-center font-mono-game text-xs"
+                />
+                <p className="text-[10px] text-gray-500 text-center">
+                  {utr.length > 0 ? `${utr.length} characters entered` : 'Find TX Hash in your wallet after sending'}
+                </p>
               </div>
 
-              <button onClick={handleSubmitUtr} disabled={utr.length < 10}
-                className={`w-full py-4 rounded-xl font-black text-sm uppercase ${
-                  utr.length >= 10 ? 'btn-green' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              <button 
+                onClick={handleSubmitUtr} 
+                disabled={utr.length < 10 || isTimerExpired}
+                className={`w-full py-5 rounded-2xl font-black text-base uppercase shadow-xl transition-all ${
+                  utr.length >= 10 && !isTimerExpired 
+                    ? 'btn-green hover:scale-105 active:scale-95' 
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}>
-                ✓ Submit Transaction
+                {isTimerExpired ? '⚠️ Expired' : utr.length < 10 ? 'Enter Transaction Hash' : '✓ Submit Transaction'}
               </button>
             </>
           )}
+
+          {/* Terms & Conditions */}
+          <div className="bg-[#141414]/50 border border-[#2A2A2A] rounded-2xl p-4 mt-6">
+            <p className="text-[10px] text-gray-500 text-center leading-relaxed">
+              By proceeding, you agree to our{' '}
+              <button onClick={() => setShowTerms(true)} className="text-[#FFC93D] underline">
+                Terms & Conditions
+              </button>
+              {' '}and{' '}
+              <button onClick={() => setShowTerms(true)} className="text-[#FFC93D] underline">
+                Privacy Policy
+              </button>
+              . Payments are processed securely. Contact support for any issues.
+            </p>
+          </div>
         </div>
+
+        {/* Instructions Modal */}
+        {showTerms && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center animate-fade-in" onClick={() => setShowTerms(false)}>
+            <div className="bg-gradient-to-b from-[#141414] to-[#0A0A0A] rounded-t-3xl w-full max-w-lg max-h-[80vh] overflow-y-auto border-t-2 border-[#FFC93D]/30" onClick={e => e.stopPropagation()}>
+              <div className="sticky top-0 bg-[#141414] p-4 border-b border-[#2A2A2A] flex items-center justify-between">
+                <h2 className="text-lg font-black text-white">📋 Instructions & Terms</h2>
+                <button onClick={() => setShowTerms(false)} className="text-2xl text-gray-400 active:scale-90">✕</button>
+              </div>
+              
+              <div className="p-5 space-y-5">
+                {/* Payment Instructions */}
+                <div>
+                  <h3 className="text-sm font-black text-[#FFC93D] uppercase mb-3">💳 Payment Instructions</h3>
+                  <ol className="text-xs text-gray-300 space-y-3">
+                    <li className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-[#FFC93D]/20 text-[#FFC93D] flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                      <span>Open any UPI app (GPay, PhonePe, Paytm, etc.) or scan the QR code shown above</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-[#FFC93D]/20 text-[#FFC93D] flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                      <span>Pay exactly <b className="text-[#FFC93D]">{formatCurrency(amt)}</b> to the UPI ID shown</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-[#FFC93D]/20 text-[#FFC93D] flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                      <span>After successful payment, copy the <b className="text-[#FFC93D]">12-digit UTR/Reference number</b> from your payment app</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-[#FFC93D]/20 text-[#FFC93D] flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
+                      <span>Paste the UTR number in the field above and click "Submit & Confirm Payment"</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-[#FFC93D]/20 text-[#FFC93D] flex items-center justify-center text-xs font-bold flex-shrink-0">5</span>
+                      <span>Your amount will be credited to your wallet within <b className="text-[#22C55E]">1-5 minutes</b></span>
+                    </li>
+                  </ol>
+                </div>
+
+                {/* Important Notes */}
+                <div className="bg-amber-900/20 border border-amber-700/50 rounded-2xl p-4">
+                  <h3 className="text-sm font-black text-amber-400 uppercase mb-2">⚠️ Important Notes</h3>
+                  <ul className="text-xs text-amber-200/80 space-y-2">
+                    <li>• QR code expires in <b>5 minutes</b>. Generate new if expired.</li>
+                    <li>• Pay exact amount. Partial payments won't be credited.</li>
+                    <li>• Keep the UTR/Reference number safe for tracking.</li>
+                    <li>• If payment fails, amount will be refunded to your bank.</li>
+                  </ul>
+                </div>
+
+                {/* Terms & Conditions */}
+                <div>
+                  <h3 className="text-sm font-black text-gray-300 uppercase mb-3">📜 Terms & Conditions</h3>
+                  <div className="text-[11px] text-gray-400 space-y-2 leading-relaxed">
+                    <p>1. <b className="text-gray-300">Payment Processing:</b> All deposits are processed automatically. In case of delay, contact support with your Order ID.</p>
+                    <p>2. <b className="text-gray-300">Minimum Deposit:</b> ₹{state.settings.minDeposit}. Maximum: ₹{state.settings.maxDeposit.toLocaleString()} per transaction.</p>
+                    <p>3. <b className="text-gray-300">Refunds:</b> Failed transactions are refunded within 24-48 hours to the source account.</p>
+                    <p>4. <b className="text-gray-300">Security:</b> All transactions are encrypted and secure. We never store your payment details.</p>
+                    <p>5. <b className="text-gray-300">Age Restriction:</b> You must be 18+ years old to use this platform.</p>
+                    <p>6. <b className="text-gray-300">Responsible Gaming:</b> Play responsibly. Set deposit limits if needed.</p>
+                    <p>7. <b className="text-gray-300">Disputes:</b> For any payment issues, contact support within 24 hours with screenshot and UTR.</p>
+                  </div>
+                </div>
+
+                {/* Contact Support */}
+                <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-[#2A2A2A]">
+                  <p className="text-xs text-gray-400 text-center">
+                    Need help? Contact us at{' '}
+                    <span className="text-[#FFC93D] font-bold">support@legacywin.com</span>
+                    {' '}or use live chat
+                  </p>
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 bg-[#141414] p-4 border-t border-[#2A2A2A]">
+                <button onClick={() => setShowTerms(false)} className="btn-gold w-full">
+                  ✓ I Understand
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
