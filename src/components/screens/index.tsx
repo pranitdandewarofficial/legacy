@@ -12,8 +12,8 @@ type SetState = (s: AppState | ((p: AppState) => AppState)) => void;
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setProgress(p => Math.min(100, p + 5)), 100);
-    const timer = setTimeout(onDone, 2500);
+    const interval = setInterval(() => setProgress(p => Math.min(100, p + 7)), 100);
+    const timer = setTimeout(onDone, 1500);
     return () => { clearInterval(interval); clearTimeout(timer); };
   }, [onDone]);
 
@@ -563,7 +563,17 @@ export function ProfileScreen({ state, setState, navigate }: { state: AppState; 
             <span className="text-gray-500">→</span>
           </button>
         ))}</div>
-        <button onClick={() => setState((prev: AppState) => ({ ...prev, session: null }))} className="w-full py-3.5 rounded-xl border border-red-900/50 text-red-400 font-bold text-sm">Logout</button>
+        <button 
+          onClick={() => {
+            if (confirm('Are you sure you want to logout?')) {
+              setState((prev: AppState) => ({ ...prev, session: null }));
+              window.location.reload();
+            }
+          }} 
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-900/30 to-red-800/30 border-2 border-red-900/50 text-red-400 font-bold text-sm hover:from-red-900/40 hover:to-red-800/40 transition-all active:scale-95"
+        >
+          🚪 Logout
+        </button>
       </div>
     </div>
   );

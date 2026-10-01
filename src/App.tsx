@@ -79,6 +79,7 @@ function App() {
   useEffect(() => {
     if (!initialized) return;
     const s = stateRef.current;
+    console.log('App initialized:', { session: s.session, onboarded: s.onboarded });
     if (window.location.hash === '#admin') setScreen('admin');
     else if (s.session) setScreen('home');
     else if (s.onboarded) setScreen('auth');
