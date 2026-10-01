@@ -86,21 +86,75 @@ export function HomeScreen({ state, navigate }: { state: AppState; navigate: (s:
 
   return (
     <div className="pb-24 animate-fade-in">
-      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
-        <div className="flex items-center gap-2"><span className="text-lg">👑</span><span className="font-logo text-sm font-black text-gold-gradient">LEGACY WIN</span></div>
+      {/* Sticky Header with Logo */}
+      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top border-b border-[#2A2A2A]">
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate('wallet')} className="bg-[#1A1A1A] border border-[#FFC93D]/30 rounded-full px-3 py-1.5 flex items-center gap-1.5 active:scale-95 transition-transform">
-            <span className="text-xs">💰</span><span className="text-xs font-bold text-[#FFC93D] font-mono-game">{formatCurrency(wallet?.balance || 0)}</span>
-          </button>
-          <button className="w-8 h-8 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center text-sm">🔔</button>
+          <span className="text-2xl">👑</span>
+          <span className="font-logo text-lg font-black text-gold-gradient">LEGACY WIN</span>
         </div>
+        <button className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center text-lg active:scale-95 transition-transform">
+          🔔
+        </button>
       </div>
-      <div className="px-4 pt-3 space-y-5">
-        <div className="bg-gradient-to-r from-purple-900/60 via-purple-800/40 to-[#141414] rounded-2xl p-4 border border-purple-700/30">
-          <p className="text-xs text-purple-300">Welcome back,</p>
-          <p className="text-lg font-black text-white">{user?.name || 'Player'} 👋</p>
-          <span className="text-[10px] bg-[#FFC93D]/20 text-[#FFC93D] px-2 py-0.5 rounded-full font-bold mt-1 inline-block">VIP {user?.vipLevel || 1}</span>
+
+      <div className="px-4 pt-4 space-y-5">
+        {/* Prominent Wallet Card at Top */}
+        <div className="bg-gradient-to-br from-[#1a0a2e] via-[#2a1a4e] to-[#1a0a2e] rounded-3xl p-6 border-2 border-[#FFC93D]/30 shadow-2xl shadow-purple-900/50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFC93D]/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs text-purple-300 uppercase tracking-wider">Welcome back,</p>
+                <p className="text-xl font-black text-white mt-1">{user?.name || 'Player'}</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFC93D] to-[#D4A017] flex items-center justify-center text-2xl shadow-lg shadow-[#FFC93D]/30">
+                👤
+              </div>
+            </div>
+            
+            <div className="bg-black/30 rounded-2xl p-4 backdrop-blur-sm">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">💰 Wallet Balance</p>
+              <p className="text-4xl font-black font-mono-game text-[#FFC93D] mb-4">
+                {formatCurrency(wallet?.balance || 0)}
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => navigate('deposit')}
+                  className="flex-1 btn-gold py-3 text-sm font-bold active:scale-95 transition-transform"
+                >
+                  💳 Deposit
+                </button>
+                <button 
+                  onClick={() => navigate('withdraw')}
+                  className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl py-3 text-sm font-bold text-white active:scale-95 transition-all"
+                >
+                  💸 Withdraw
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { icon: '🎁', label: 'Bonus', action: () => navigate('bonus') },
+            { icon: '📊', label: 'History', action: () => navigate('history') },
+            { icon: '👥', label: 'Invite', action: () => navigate('invite') },
+            { icon: '⭐', label: 'VIP', action: () => navigate('vip') },
+          ].map((item, i) => (
+            <button 
+              key={i}
+              onClick={item.action}
+              className="flex flex-col items-center gap-2 p-3 bg-[#141414] border border-[#2A2A2A] rounded-2xl active:scale-95 transition-transform hover:border-[#FFC93D]/50"
+            >
+              <span className="text-2xl">{item.icon}</span>
+              <span className="text-[10px] font-bold text-gray-400">{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Live Players Ticker */}
         <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 rounded-xl px-4 py-2.5 flex items-center gap-2 border border-purple-700/20">
           <span className="w-2 h-2 bg-red-500 rounded-full animate-dot-pulse" />
           <span className="text-xs text-purple-200 font-semibold">{onlineCount.toLocaleString()} players online</span>

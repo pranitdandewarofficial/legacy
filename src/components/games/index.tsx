@@ -87,21 +87,21 @@ export function SlotsGame({ state, setState, navigate }: { state: AppState; setS
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-[#0A0A0A] to-[#1a0a2e] flex flex-col overflow-y-auto no-scrollbar">
-      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top border-b border-[#2A2A2A]">
+    <div className="fixed inset-0 bg-gradient-to-b from-[#0A0A0A] via-[#1a0a2e] to-[#0A0A0A] flex flex-col overflow-y-auto no-scrollbar">
+      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top border-b border-[#FFC93D]/20">
         <button onClick={() => navigate('home')} className="text-2xl active:scale-90 transition-transform">←</button>
-        <h1 className="text-lg font-black text-gold-gradient">🎰 Joker's Fortune</h1>
-        <span className="text-xs font-mono-game font-bold text-[#FFC93D] bg-[#1A1A1A] px-2 py-1 rounded-lg">{formatCurrency(wallet?.balance || 0)}</span>
+        <h1 className="text-lg font-black bg-gradient-to-r from-[#FFE58F] via-[#FFC93D] to-[#D4A017] bg-clip-text text-transparent">🎰 Joker's Fortune</h1>
+        <span className="text-xs font-mono-game font-bold text-[#FFC93D] bg-[#1A1A1A] px-3 py-1.5 rounded-lg border border-[#FFC93D]/30">{formatCurrency(wallet?.balance || 0)}</span>
       </div>
       <div className="flex-1 flex flex-col items-center px-4 pt-6 pb-8">
-        <div className="w-full max-w-sm bg-gradient-to-r from-[#FFC93D] via-[#FFE58F] to-[#FFC93D] rounded-2xl py-3 text-center mb-6 shadow-lg shadow-[#FFC93D]/30 animate-pulse-gold">
-          <p className="text-sm font-black text-black uppercase tracking-wider">🏆 Jackpot: {formatCurrency((wallet?.balance || 0) * 10)}</p>
+        <div className="w-full max-w-sm bg-gradient-to-r from-[#FFC93D] via-[#FFE58F] to-[#FFC93D] rounded-2xl py-4 text-center mb-6 shadow-2xl shadow-[#FFC93D]/40 animate-pulse-gold border-2 border-[#FFE58F]/50">
+          <p className="text-base font-black text-black uppercase tracking-wider">🏆 Jackpot: {formatCurrency((wallet?.balance || 0) * 10)}</p>
         </div>
-        <div className="bg-gradient-to-b from-[#2a1a4e] to-[#1a0a2e] rounded-3xl p-6 border-4 border-[#FFC93D]/50 shadow-2xl w-full max-w-sm">
-          <div className="bg-[#0A0A0A] rounded-2xl p-4 border-2 border-[#FFC93D]/30">
+        <div className="bg-gradient-to-b from-[#2a1a4e] via-[#1a0a2e] to-[#0A0A0A] rounded-3xl p-6 border-4 border-[#FFC93D]/60 shadow-2xl shadow-purple-900/50 w-full max-w-sm">
+          <div className="bg-gradient-to-b from-[#0A0A0A] to-[#1A1A1A] rounded-2xl p-4 border-2 border-[#FFC93D]/40">
             <div className="grid grid-cols-3 gap-3">
               {reels.flat().map((sym, i) => (
-                <div key={i} className={`h-20 bg-gradient-to-b from-[#1A1A1A] to-[#0A0A0A] rounded-xl flex items-center justify-center text-4xl border-2 transition-all duration-300 ${spinning ? 'animate-pulse' : ''} ${winningCells.includes(i) ? 'border-[#FFC93D] shadow-lg shadow-[#FFC93D]/50 scale-110' : 'border-[#2A2A2A]'}`}>
+                <div key={i} className={`h-24 bg-gradient-to-b from-[#1A1A1A] to-[#0A0A0A] rounded-xl flex items-center justify-center text-5xl border-2 transition-all duration-300 shadow-lg ${spinning ? 'animate-pulse blur-sm' : ''} ${winningCells.includes(i) ? 'border-[#FFC93D] shadow-2xl shadow-[#FFC93D]/60 scale-110 bg-[#FFC93D]/10' : 'border-[#2A2A2A]'}`}>
                   {sym}
                 </div>
               ))}
@@ -109,24 +109,24 @@ export function SlotsGame({ state, setState, navigate }: { state: AppState; setS
           </div>
         </div>
         {showResult && (
-          <div className={`mt-6 text-center animate-bounce-in ${winAmount > 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
-            <p className="text-3xl font-black font-mono-game">{winAmount > 0 ? `+${formatCurrency(winAmount)}` : 'No Win'}</p>
-            {winAmount > 0 && <p className="text-sm mt-1">🎉 Congratulations!</p>}
+          <div className={`mt-6 text-center animate-bounce-in ${winAmount > 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
+            <p className="text-4xl font-black font-mono-game drop-shadow-lg">{winAmount > 0 ? `+${formatCurrency(winAmount)}` : 'No Win'}</p>
+            {winAmount > 0 && <p className="text-sm mt-2 text-[#34D399]">🎉 Congratulations! You Won!</p>}
           </div>
         )}
         <div className="mt-6 w-full max-w-sm">
-          <div className="flex items-center justify-between bg-[#141414] rounded-2xl p-4 border-2 border-[#2A2A2A]">
-            <button onClick={() => setBet(Math.max(10, bet - 50))} disabled={spinning} className="w-12 h-12 rounded-xl bg-[#1A1A1A] flex items-center justify-center text-xl font-bold text-gray-400 active:scale-90 transition-transform disabled:opacity-50">-</button>
+          <div className="flex items-center justify-between bg-gradient-to-b from-[#1A1A1A] to-[#0A0A0A] rounded-2xl p-4 border-2 border-[#FFC93D]/30 shadow-lg">
+            <button onClick={() => setBet(Math.max(10, bet - 50))} disabled={spinning} className="w-14 h-14 rounded-xl bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] flex items-center justify-center text-2xl font-bold text-gray-300 active:scale-90 transition-transform disabled:opacity-50 border border-[#3A3A3A]">-</button>
             <div className="text-center">
-              <p className="text-[10px] text-gray-500 uppercase">Bet</p>
-              <p className="text-2xl font-black font-mono-game text-white">{formatCurrency(bet)}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Bet Amount</p>
+              <p className="text-3xl font-black font-mono-game text-[#FFC93D] drop-shadow-lg">{formatCurrency(bet)}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setBet(Math.min(state.settings.maxBet, bet * 2))} disabled={spinning} className="w-12 h-12 rounded-xl bg-[#1A1A1A] flex items-center justify-center text-sm font-bold text-[#FFC93D] active:scale-90 transition-transform disabled:opacity-50">×2</button>
-              <button onClick={() => setBet(state.settings.maxBet)} disabled={spinning} className="w-12 h-12 rounded-xl bg-[#1A1A1A] flex items-center justify-center text-[10px] font-bold text-[#FFC93D] active:scale-90 transition-transform disabled:opacity-50">MAX</button>
+              <button onClick={() => setBet(Math.min(state.settings.maxBet, bet * 2))} disabled={spinning} className="w-14 h-14 rounded-xl bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] flex items-center justify-center text-sm font-bold text-[#FFC93D] active:scale-90 transition-transform disabled:opacity-50 border border-[#3A3A3A]">×2</button>
+              <button onClick={() => setBet(state.settings.maxBet)} disabled={spinning} className="w-14 h-14 rounded-xl bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] flex items-center justify-center text-[10px] font-bold text-[#FFC93D] active:scale-90 transition-transform disabled:opacity-50 border border-[#3A3A3A]">MAX</button>
             </div>
           </div>
-          <button onClick={spin} disabled={spinning} className={`w-full mt-4 py-5 rounded-2xl font-black text-xl uppercase shadow-xl transition-all ${spinning ? 'bg-gray-700 text-gray-400' : 'btn-green hover:scale-105 active:scale-95'}`}>
+          <button onClick={spin} disabled={spinning} className={`w-full mt-4 py-6 rounded-2xl font-black text-2xl uppercase shadow-2xl transition-all ${spinning ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-b from-[#10B981] via-[#059669] to-[#047857] text-white hover:scale-105 active:scale-95 border-2 border-[#34D399]/50'}`}>
             {spinning ? '⏳ Spinning...' : '🎰 SPIN NOW'}
           </button>
         </div>

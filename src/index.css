@@ -4,6 +4,20 @@
 .font-logo, [class*="font-logo"] { font-family: 'Cinzel', serif !important; }
 .font-mono-game, [class*="font-mono-game"] { font-family: 'JetBrains Mono', monospace !important; }
 
+/* Premium Color Variables */
+:root {
+  --gold-primary: #FFC93D;
+  --gold-light: #FFE58F;
+  --gold-dark: #D4A017;
+  --purple-primary: #8B5CF6;
+  --purple-deep: #7C3AED;
+  --green-primary: #10B981;
+  --green-light: #34D399;
+  --red-primary: #EF4444;
+  --blue-primary: #3B82F6;
+  --pink-primary: #EC4899;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
