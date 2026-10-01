@@ -1,4 +1,14 @@
-import { v4 as uuidv4 } from 'uuid';
+// Use crypto.randomUUID if available, fallback to manual generation
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 export interface User {
   uid: string;
@@ -198,7 +208,7 @@ export function createUser(
     totalWon: 0,
   };
   const bonusTx: Transaction = {
-    id: uuidv4(),
+    id: generateId(),
     uid,
     type: 'bonus',
     amount: state.settings.welcomeBonus,
@@ -228,12 +238,12 @@ export function updateBalance(state: AppState, uid: string, delta: number): AppS
 }
 
 export function addTransaction(state: AppState, tx: Omit<Transaction, 'id' | 'createdAt'>): AppState {
-  const newTx: Transaction = { ...tx, id: uuidv4(), createdAt: Date.now() };
+  const newTx: Transaction = { ...tx, id: generateId(), createdAt: Date.now() };
   return { ...state, transactions: [newTx, ...state.transactions] };
 }
 
 export function addBet(state: AppState, bet: Omit<Bet, 'id' | 'createdAt'>): AppState {
-  const newBet: Bet = { ...bet, id: uuidv4(), createdAt: Date.now() };
+  const newBet: Bet = { ...bet, id: generateId(), createdAt: Date.now() };
   const commission = Math.round(bet.amount * state.settings.commissionRate * 100) / 100;
   const user = state.users[bet.uid];
   const wallet = state.wallets[bet.uid];

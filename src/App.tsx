@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, Component, type ReactNode } from 'react';
 import { loadState, saveState, playSound, type AppState } from './store';
 import {
   SplashScreen, OnboardingScreen, AuthScreen, HomeScreen, WalletScreen,
@@ -7,6 +7,31 @@ import {
   ActivityScreen, AdminPanel
 } from './screens';
 import { SlotsGame, CrashGame, MinesGame, DiceGame, WheelGame } from './games';
+
+// Error Boundary
+class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: string}> {
+  constructor(props: {children: ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-6 text-white">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
+          <p className="text-sm text-gray-400 text-center mb-4">{this.state.error}</p>
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }}
+            className="btn-gold">Reset & Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function BottomNav({ current, navigate }: { current: string; navigate: (s: string) => void }) {
   const tabs = [
@@ -18,14 +43,14 @@ function BottomNav({ current, navigate }: { current: string; navigate: (s: strin
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 safe-bottom">
-      <div className="max-w-lg mx-auto bg-bg-surface border-t border-border-subtle px-2 py-1.5 flex items-center justify-around">
+    <div className="fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-lg mx-auto bg-[#141414] border-t border-[#2A2A2A] px-2 py-1.5 flex items-center justify-around">
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => { playSound('click'); navigate(tab.id); }}
             className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
               tab.center
-                ? 'bg-gradient-to-b from-gold-light to-gold -mt-4 shadow-lg shadow-gold/30 rounded-full px-4 py-2'
-                : current === tab.id ? 'text-gold' : 'text-gray-500'
+                ? 'bg-gradient-to-b from-[#FFE58F] to-[#FFC93D] -mt-5 shadow-lg shadow-[#FFC93D]/30 rounded-full px-5 py-2.5'
+                : current === tab.id ? 'text-[#FFC93D]' : 'text-gray-500'
             }`}>
             <span className={tab.center ? 'text-lg' : 'text-xl'}>{tab.icon}</span>
             <span className={`text-[9px] font-bold ${tab.center ? 'text-black' : ''}`}>{tab.label}</span>
@@ -37,13 +62,18 @@ function BottomNav({ current, navigate }: { current: string; navigate: (s: strin
 }
 
 function App() {
-  const [state, setStateRaw] = useState<AppState>(loadState);
+  const [state, setStateRaw] = useState<AppState>(() => loadState());
   const [screen, setScreen] = useState('splash');
-  const [showSplash, setShowSplash] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  const setState = useCallback((newState: AppState) => {
-    setStateRaw(newState);
-    saveState(newState);
+  const setState = useCallback((newStateOrFn: AppState | ((prev: AppState) => AppState)) => {
+    setStateRaw(prev => {
+      const newState = typeof newStateOrFn === 'function' ? newStateOrFn(prev) : newStateOrFn;
+      saveState(newState);
+      return newState;
+    });
   }, []);
 
   const navigate = useCallback((s: string) => {
@@ -60,25 +90,27 @@ function App() {
 
   // Determine initial screen after splash
   useEffect(() => {
-    if (!showSplash) {
-      if (state.session) {
-        setScreen('home');
-      } else if (state.onboarded) {
-        setScreen('auth');
-      } else {
-        setScreen('onboarding');
-      }
+    if (!initialized) return;
+    const s = stateRef.current;
+    if (window.location.hash === '#admin') {
+      setScreen('admin');
+    } else if (s.session) {
+      setScreen('home');
+    } else if (s.onboarded) {
+      setScreen('auth');
+    } else {
+      setScreen('onboarding');
     }
-  }, [showSplash]);
+  }, [initialized]);
 
   const handleSplashDone = useCallback(() => {
-    setShowSplash(false);
+    setInitialized(true);
   }, []);
 
   const handleOnboardingComplete = useCallback(() => {
-    setState({ ...state, onboarded: true });
+    setState(prev => ({ ...prev, onboarded: true }));
     setScreen('auth');
-  }, [state, setState]);
+  }, [setState]);
 
   // Game screens (no bottom nav)
   const gameScreens = ['slots', 'crash', 'mines', 'dice', 'wheel'];
@@ -138,11 +170,20 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-root text-white max-w-lg mx-auto relative">
+    <div className="min-h-screen bg-[#0A0A0A] text-white max-w-lg mx-auto relative overflow-x-hidden">
       {renderScreen()}
       {showNav && <BottomNav current={screen} navigate={navigate} />}
     </div>
   );
 }
 
-export default App;
+// Wrap with ErrorBoundary
+function AppWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export default AppWithBoundary;

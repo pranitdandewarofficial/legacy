@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
   loadState, saveState, createUser, updateBalance, addTransaction, addBet,
@@ -6,9 +6,9 @@ import {
   type AppState, type User, type Wallet
 } from './store';
 
-// ============ SCREENS ============
+type SetState = (s: AppState | ((p: AppState) => AppState)) => void;
 
-// Splash Screen
+// ============ Splash Screen ============
 function SplashScreen({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Initializing...');
@@ -26,17 +26,14 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   }, [onDone]);
 
   return (
-    <div className="fixed inset-0 bg-bg-root flex flex-col items-center justify-center z-50">
-      <div className="absolute inset-0 bg-gradient-radial from-purple-900/20 to-transparent" 
-           style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%)' }} />
+    <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center z-50">
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%)' }} />
       <div className="relative z-10 flex flex-col items-center">
         <div className="text-6xl mb-4 animate-float">👑</div>
-        <h1 className="font-logo text-4xl font-black bg-gradient-to-b from-gold-light to-gold-dark bg-clip-text text-transparent">
-          LEGACY WIN
-        </h1>
-        <p className="text-[11px] text-gold tracking-[4px] mt-2 uppercase">Play • Win • Enjoy</p>
-        <div className="w-48 h-1.5 bg-border-subtle rounded-full mt-8 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-gold-light to-gold rounded-full transition-all duration-500"
+        <h1 className="font-logo text-4xl font-black text-gold-gradient">LEGACY WIN</h1>
+        <p className="text-[11px] text-[#FFC93D] tracking-[4px] mt-2 uppercase">Play • Win • Enjoy</p>
+        <div className="w-48 h-1.5 bg-[#2A2A2A] rounded-full mt-8 overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-[#FFE58F] to-[#FFC93D] rounded-full transition-all duration-500"
                style={{ width: `${progress}%` }} />
         </div>
         <p className="text-xs text-gray-500 mt-3">{status}</p>
@@ -46,7 +43,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-// Onboarding
+// ============ Onboarding ============
 function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const [slide, setSlide] = useState(0);
   const slides = [
@@ -56,7 +53,7 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 bg-bg-root flex flex-col animate-fade-in">
+    <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col animate-fade-in">
       <div className="flex justify-between items-center p-4">
         <button onClick={onComplete} className="text-gray-400 text-sm font-semibold">Skip</button>
         <span className="text-gray-500 text-xs">{slide + 1}/3</span>
@@ -68,7 +65,7 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
         <div className="mt-6 space-y-3">
           {slides[slide].features.map((f, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-success text-lg">✓</span>
+              <span className="text-[#22C55E] text-lg">✓</span>
               <span className="text-sm text-gray-300">{f}</span>
             </div>
           ))}
@@ -77,7 +74,7 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
       <div className="p-6 pb-8">
         <div className="flex justify-center gap-2 mb-6">
           {[0, 1, 2].map(i => (
-            <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === slide ? 'bg-gold w-6' : 'bg-border-strong'}`} />
+            <div key={i} className={`h-2 rounded-full transition-all ${i === slide ? 'bg-[#FFC93D] w-6' : 'bg-[#3A3A3A] w-2'}`} />
           ))}
         </div>
         <button onClick={() => slide < 2 ? setSlide(slide + 1) : onComplete()} className="btn-gold w-full">
@@ -88,8 +85,8 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-// Auth Screen
-function AuthScreen({ state, setState }: { state: AppState; setState: (s: AppState) => void }) {
+// ============ Auth Screen ============
+function AuthScreen({ state, setState }: { state: AppState; setState: SetState }) {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -105,7 +102,7 @@ function AuthScreen({ state, setState }: { state: AppState; setState: (s: AppSta
     const user = Object.values(state.users).find(u => u.phone === phone && u.password === password);
     if (!user) { setError('Invalid credentials'); return; }
     playSound('click');
-    setState({ ...state, session: user.uid });
+    setState(prev => ({ ...prev, session: user.uid }));
   };
 
   const handleRegister = () => {
@@ -117,33 +114,29 @@ function AuthScreen({ state, setState }: { state: AppState; setState: (s: AppSta
     if (Object.values(state.users).some(u => u.phone === phone)) { setError('Phone already registered'); return; }
     playSound('fanfare');
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    const newState = createUser(state, name, phone, password, false);
-    setState(newState);
+    setState(prev => createUser(prev, name, phone, password, false));
   };
 
   const handleGuest = () => {
     playSound('click');
     confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-    const newState = createUser(state, 'Guest User', '9999999999', 'guest123', true);
-    setState(newState);
+    setState(prev => createUser(prev, 'Guest User', '9999999999', 'guest123', true));
   };
 
   return (
-    <div className="fixed inset-0 bg-bg-root flex flex-col overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col overflow-y-auto no-scrollbar">
       <div className="p-6 pt-12">
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">👑</div>
-          <h1 className="font-logo text-2xl font-black bg-gradient-to-b from-gold-light to-gold-dark bg-clip-text text-transparent">
-            LEGACY WIN
-          </h1>
+          <h1 className="font-logo text-2xl font-black text-gold-gradient">LEGACY WIN</h1>
         </div>
-        <div className="flex bg-bg-input rounded-xl p-1 mb-6">
+        <div className="flex bg-[#1A1A1A] rounded-xl p-1 mb-6">
           <button onClick={() => setTab('login')}
-            className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${tab === 'login' ? 'bg-purple-deep text-white' : 'text-gray-400'}`}>
+            className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${tab === 'login' ? 'bg-[#7C3AED] text-white' : 'text-gray-400'}`}>
             Login
           </button>
           <button onClick={() => setTab('register')}
-            className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${tab === 'register' ? 'bg-purple-deep text-white' : 'text-gray-400'}`}>
+            className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${tab === 'register' ? 'bg-[#7C3AED] text-white' : 'text-gray-400'}`}>
             Register
           </button>
         </div>
@@ -184,11 +177,11 @@ function AuthScreen({ state, setState }: { state: AppState; setState: (s: AppSta
   );
 }
 
-// Home Screen
+// ============ Home Screen ============
 function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const user = getCurrentUser(state);
   const wallet = getCurrentWallet(state);
-  const [onlineCount] = useState(Math.floor(Math.random() * 5000) + 8000);
+  const [onlineCount] = useState(() => Math.floor(Math.random() * 5000) + 8000);
 
   const categories = [
     { icon: '🔥', name: 'Popular' }, { icon: '🎰', name: 'Slots' },
@@ -219,17 +212,15 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
         <div className="flex items-center gap-2">
           <span className="text-lg">👑</span>
-          <span className="font-logo text-sm font-black bg-gradient-to-b from-gold-light to-gold bg-clip-text text-transparent">
-            LEGACY WIN
-          </span>
+          <span className="font-logo text-sm font-black text-gold-gradient">LEGACY WIN</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => navigate('wallet')}
-            className="bg-bg-input border border-border-subtle rounded-full px-3 py-1.5 flex items-center gap-1">
+            className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-full px-3 py-1.5 flex items-center gap-1">
             <span className="text-xs">💰</span>
-            <span className="text-xs font-bold text-gold font-mono">{formatCurrency(wallet?.balance || 0)}</span>
+            <span className="text-xs font-bold text-[#FFC93D] font-mono-game">{formatCurrency(wallet?.balance || 0)}</span>
           </button>
-          <button className="w-8 h-8 rounded-full bg-bg-input border border-border-subtle flex items-center justify-center text-sm">
+          <button className="w-8 h-8 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center text-sm">
             🔔
           </button>
         </div>
@@ -247,7 +238,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
         <div className="grid grid-cols-4 gap-3">
           {categories.map((cat, i) => (
             <button key={i} onClick={() => navigate('games')}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-bg-surface border border-border-subtle active:scale-95 transition-transform">
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#141414] border border-[#2A2A2A] active:scale-95 transition-transform">
               <span className="text-2xl">{cat.icon}</span>
               <span className="text-[10px] text-gray-400 font-semibold">{cat.name}</span>
             </button>
@@ -280,7 +271,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
           </h3>
           <div className="space-y-2">
             {winners.map((w, i) => (
-              <div key={i} className="flex items-center justify-between bg-bg-surface border border-border-subtle rounded-xl px-4 py-3">
+              <div key={i} className="flex items-center justify-between bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center text-sm">👤</div>
                   <div>
@@ -288,7 +279,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
                     <p className="text-[10px] text-gray-500">{w.game}</p>
                   </div>
                 </div>
-                <span className="text-sm font-bold text-success font-mono">+{formatCurrency(w.amount)}</span>
+                <span className="text-sm font-bold text-[#22C55E] font-mono-game">+{formatCurrency(w.amount)}</span>
               </div>
             ))}
           </div>
@@ -305,12 +296,12 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
               const names = ['Amit***', 'Raj***', 'Pri***'];
               return (
                 <div key={idx} className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-b from-gold-light to-gold-dark flex items-center justify-center text-lg mb-1">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-b from-[#FFE58F] to-[#D4A017] flex items-center justify-center text-lg mb-1">
                     👤
                   </div>
                   <span className="text-xs font-bold text-white">{names[idx]}</span>
-                  <span className="text-[10px] text-gold font-mono">{formatCurrency(amounts[idx])}</span>
-                  <div className={`${heights[idx]} w-16 mt-2 rounded-t-xl bg-gradient-to-b from-gold/20 to-gold/5 flex items-center justify-center`}>
+                  <span className="text-[10px] text-[#FFC93D] font-mono-game">{formatCurrency(amounts[idx])}</span>
+                  <div className={`${heights[idx]} w-16 mt-2 rounded-t-xl bg-gradient-to-b from-[#FFC93D]/20 to-[#FFC93D]/5 flex items-center justify-center`}>
                     <span className="text-2xl">{tops[idx]}</span>
                   </div>
                 </div>
@@ -323,7 +314,7 @@ function HomeScreen({ state, navigate }: { state: AppState; navigate: (s: string
   );
 }
 
-// Wallet Screen
+// ============ Wallet Screen ============
 function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const wallet = getCurrentWallet(state);
   const menu = [
@@ -342,7 +333,7 @@ function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: stri
       <div className="px-4 pt-3 space-y-4">
         <div className="bg-purple-gradient rounded-2xl p-5 text-center">
           <p className="text-xs text-purple-200 uppercase tracking-wider">Available Balance</p>
-          <p className="text-3xl font-black font-mono text-white mt-2">{formatCurrency(wallet?.balance || 0)}</p>
+          <p className="text-3xl font-black font-mono-game text-white mt-2">{formatCurrency(wallet?.balance || 0)}</p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => navigate('deposit')} className="flex-1 btn-gold text-xs py-3">Deposit</button>
             <button onClick={() => navigate('withdraw')} className="flex-1 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-xs py-3 active:scale-95 transition-transform">
@@ -353,7 +344,7 @@ function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: stri
         <div className="card">
           {menu.map((item, i) => (
             <button key={i} onClick={item.action}
-              className="flex items-center justify-between w-full py-3.5 border-b border-border-subtle last:border-0">
+              className="flex items-center justify-between w-full py-3.5 border-b border-[#2A2A2A] last:border-0">
               <div className="flex items-center gap-3">
                 <span className="text-lg">{item.icon}</span>
                 <span className="text-sm font-semibold text-white">{item.label}</span>
@@ -367,8 +358,8 @@ function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: stri
   );
 }
 
-// Deposit Screen
-function DepositScreen({ state, setState, navigate }: { state: AppState; setState: (s: AppState) => void; navigate: (s: string) => void }) {
+// ============ Deposit Screen ============
+function DepositScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'upi' | 'usdt'>('upi');
   const [step, setStep] = useState(1);
@@ -382,16 +373,17 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
       return;
     }
     playSound('click');
-    // Simulate instant deposit for demo
-    const newState = updateBalance(state, state.session!, amt);
-    const txState = addTransaction(newState, {
-      uid: state.session!,
-      type: 'deposit',
-      amount: amt,
-      description: `Deposit via ${method.toUpperCase()}`,
-      status: 'completed',
+    setState(prev => {
+      let ns = updateBalance(prev, prev.session!, amt);
+      ns = addTransaction(ns, {
+        uid: prev.session!,
+        type: 'deposit',
+        amount: amt,
+        description: `Deposit via ${method.toUpperCase()}`,
+        status: 'completed',
+      });
+      return ns;
     });
-    setState(txState);
     playSound('fanfare');
     confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
     navigate('home');
@@ -407,19 +399,19 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
         <div className="px-4 pt-3 space-y-4">
           <div className="bg-purple-gradient rounded-2xl p-4 text-center">
             <p className="text-xs text-purple-200">Current Balance</p>
-            <p className="text-2xl font-black font-mono text-white">{formatCurrency(wallet?.balance || 0)}</p>
+            <p className="text-2xl font-black font-mono-game text-white">{formatCurrency(wallet?.balance || 0)}</p>
           </div>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-gold">₹</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-[#FFC93D]">₹</span>
             <input type="number" placeholder="Enter amount" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="input-field pl-10 text-2xl font-mono font-bold text-center" />
+              className="input-field pl-10 text-2xl font-mono-game font-bold text-center" />
           </div>
           <div className="grid grid-cols-4 gap-2">
             {chips.map(c => (
               <button key={c} onClick={() => setAmount(String(c))}
                 className={`py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  amount === String(c) ? 'bg-gold text-black' : 'bg-bg-input border border-border-subtle text-gray-300'
+                  amount === String(c) ? 'bg-[#FFC93D] text-black' : 'bg-[#1A1A1A] border border-[#2A2A2A] text-gray-300'
                 }`}>
                 {c >= 1000 ? `₹${c/1000}k` : `₹${c}`}
               </button>
@@ -430,25 +422,25 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
             <div className="space-y-2">
               <button onClick={() => setMethod('upi')}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                  method === 'upi' ? 'border-gold bg-gold/5' : 'border-border-subtle'
+                  method === 'upi' ? 'border-[#FFC93D] bg-[#FFC93D]/5' : 'border-[#2A2A2A]'
                 }`}>
                 <span className="text-xl">📱</span>
                 <div className="text-left">
                   <p className="text-sm font-bold text-white">UPI</p>
                   <p className="text-[10px] text-gray-500">Instant • GPay, PhonePe, Paytm</p>
                 </div>
-                {method === 'upi' && <span className="ml-auto text-gold">✓</span>}
+                {method === 'upi' && <span className="ml-auto text-[#FFC93D]">✓</span>}
               </button>
               <button onClick={() => setMethod('usdt')}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                  method === 'usdt' ? 'border-gold bg-gold/5' : 'border-border-subtle'
+                  method === 'usdt' ? 'border-[#FFC93D] bg-[#FFC93D]/5' : 'border-[#2A2A2A]'
                 }`}>
                 <span className="text-xl">💰</span>
                 <div className="text-left">
                   <p className="text-sm font-bold text-white">USDT (TRC20)</p>
                   <p className="text-[10px] text-gray-500">+5% bonus • Crypto</p>
                 </div>
-                {method === 'usdt' && <span className="ml-auto text-gold">✓</span>}
+                {method === 'usdt' && <span className="ml-auto text-[#FFC93D]">✓</span>}
               </button>
             </div>
           </div>
@@ -468,7 +460,7 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
       <div className="px-4 pt-3 space-y-4">
         <div className="card text-center">
           <p className="text-xs text-gray-400">Amount to Pay</p>
-          <p className="text-3xl font-black font-mono text-gold mt-1">{formatCurrency(parseInt(amount))}</p>
+          <p className="text-3xl font-black font-mono-game text-[#FFC93D] mt-1">{formatCurrency(parseInt(amount) || 0)}</p>
         </div>
         {method === 'upi' ? (
           <div className="card space-y-4">
@@ -477,20 +469,20 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
                 <div className="w-48 h-48 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
                   <div className="text-center">
                     <p className="text-4xl">📱</p>
-                    <p className="text-[10px] text-gray-600 mt-1 font-mono">{state.settings.upiVpa}</p>
+                    <p className="text-[10px] text-gray-600 mt-1 font-mono-game">{state.settings.upiVpa}</p>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-gray-400 mt-2">Scan QR or use UPI ID</p>
               <div className="flex items-center justify-center gap-2 mt-2">
-                <code className="text-xs bg-bg-input px-3 py-1.5 rounded-lg text-gold font-mono">{state.settings.upiVpa}</code>
+                <code className="text-xs bg-[#1A1A1A] px-3 py-1.5 rounded-lg text-[#FFC93D] font-mono-game">{state.settings.upiVpa}</code>
                 <button onClick={() => { navigator.clipboard?.writeText(state.settings.upiVpa); playSound('click'); }}
                   className="text-xs text-purple-400">Copy</button>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {['📱 GPay', '💜 PhonePe', '💙 Paytm', '🟠 BHIM', '🟢 Amazon', '📲 More'].map((app, i) => (
-                <button key={i} className="py-2.5 bg-bg-input border border-border-subtle rounded-xl text-[10px] font-bold text-gray-300 active:scale-95 transition-transform">
+                <button key={i} className="py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-[10px] font-bold text-gray-300 active:scale-95 transition-transform">
                   {app}
                 </button>
               ))}
@@ -499,23 +491,23 @@ function DepositScreen({ state, setState, navigate }: { state: AppState; setStat
         ) : (
           <div className="card space-y-3">
             <p className="text-xs text-gray-400 text-center">Send USDT (TRC20) to:</p>
-            <code className="block text-[10px] bg-bg-input p-3 rounded-lg text-gold font-mono break-all text-center">
+            <code className="block text-[10px] bg-[#1A1A1A] p-3 rounded-lg text-[#FFC93D] font-mono-game break-all text-center">
               {state.settings.usdtWallet}
             </code>
             <p className="text-[10px] text-amber-400 text-center">⚠️ Send exact amount • TRC20 network only</p>
-            <p className="text-xs text-success text-center font-bold">+5% bonus applied!</p>
+            <p className="text-xs text-[#22C55E] text-center font-bold">+5% bonus applied!</p>
           </div>
         )}
         <button onClick={handleDeposit} className="btn-green w-full">
-          ✓ I've Paid {formatCurrency(parseInt(amount))}
+          ✓ I've Paid {formatCurrency(parseInt(amount) || 0)}
         </button>
       </div>
     </div>
   );
 }
 
-// Withdraw Screen
-function WithdrawScreen({ state, setState, navigate }: { state: AppState; setState: (s: AppState) => void; navigate: (s: string) => void }) {
+// ============ Withdraw Screen ============
+function WithdrawScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [name, setName] = useState('');
@@ -531,27 +523,29 @@ function WithdrawScreen({ state, setState, navigate }: { state: AppState; setSta
     if (pin.length !== 4) { playSound('loss'); return; }
 
     playSound('click');
-    let newState = updateBalance(state, state.session!, -amt);
-    newState = addTransaction(newState, {
-      uid: state.session!,
-      type: 'withdraw',
-      amount: -amt,
-      description: `Withdraw to ${upiId}`,
-      status: 'pending',
+    setState(prev => {
+      let ns = updateBalance(prev, prev.session!, -amt);
+      ns = addTransaction(ns, {
+        uid: prev.session!,
+        type: 'withdraw',
+        amount: -amt,
+        description: `Withdraw to ${upiId}`,
+        status: 'pending',
+      });
+      ns = {
+        ...ns,
+        withdrawals: [...ns.withdrawals, {
+          id: Date.now().toString(),
+          uid: prev.session!,
+          amount: amt,
+          upiId,
+          holderName: name,
+          status: 'pending' as const,
+          createdAt: Date.now(),
+        }],
+      };
+      return ns;
     });
-    newState = {
-      ...newState,
-      withdrawals: [...newState.withdrawals, {
-        id: Date.now().toString(),
-        uid: state.session!,
-        amount: amt,
-        upiId,
-        holderName: name,
-        status: 'pending' as const,
-        createdAt: Date.now(),
-      }],
-    };
-    setState(newState);
     playSound('cashout');
     navigate('wallet');
   };
@@ -565,17 +559,17 @@ function WithdrawScreen({ state, setState, navigate }: { state: AppState; setSta
       <div className="px-4 pt-3 space-y-4">
         <div className="bg-purple-gradient rounded-2xl p-4 text-center">
           <p className="text-xs text-purple-200">Available</p>
-          <p className="text-2xl font-black font-mono text-white">{formatCurrency(wallet?.balance || 0)}</p>
+          <p className="text-2xl font-black font-mono-game text-white">{formatCurrency(wallet?.balance || 0)}</p>
         </div>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gold">₹</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-[#FFC93D]">₹</span>
           <input type="number" placeholder="Amount (min ₹110)" value={amount}
-            onChange={e => setAmount(e.target.value)} className="input-field pl-10 text-xl font-mono font-bold" />
+            onChange={e => setAmount(e.target.value)} className="input-field pl-10 text-xl font-mono-game font-bold" />
         </div>
         <div className="grid grid-cols-3 gap-2">
           {chips.map(c => (
             <button key={c} onClick={() => setAmount(String(c))}
-              className="py-2.5 bg-bg-input border border-border-subtle rounded-xl text-xs font-bold text-gray-300 active:scale-95 transition-transform">
+              className="py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-xs font-bold text-gray-300 active:scale-95 transition-transform">
               {c >= 1000 ? `₹${c/1000}k` : `₹${c}`}
             </button>
           ))}
@@ -592,7 +586,7 @@ function WithdrawScreen({ state, setState, navigate }: { state: AppState; setSta
   );
 }
 
-// Transaction History
+// ============ Transaction History ============
 function HistoryScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const [filter, setFilter] = useState('all');
   const userTxs = state.transactions.filter(t => t.uid === state.session);
@@ -610,7 +604,7 @@ function HistoryScreen({ state, navigate }: { state: AppState; navigate: (s: str
           {filters.map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                filter === f ? 'bg-gold text-black' : 'bg-bg-input border border-border-subtle text-gray-400'
+                filter === f ? 'bg-[#FFC93D] text-black' : 'bg-[#1A1A1A] border border-[#2A2A2A] text-gray-400'
               }`}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
@@ -632,7 +626,7 @@ function HistoryScreen({ state, navigate }: { state: AppState; navigate: (s: str
                   <p className="text-[10px] text-gray-500">{formatDate(tx.createdAt)} • {formatTime(tx.createdAt)}</p>
                 </div>
               </div>
-              <span className={`font-bold font-mono text-sm ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}>
+              <span className={`font-bold font-mono-game text-sm ${tx.amount > 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
                 {tx.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(tx.amount))}
               </span>
             </div>
@@ -643,8 +637,8 @@ function HistoryScreen({ state, navigate }: { state: AppState; navigate: (s: str
   );
 }
 
-// Bonus Screen
-function BonusScreen({ state, setState, navigate }: { state: AppState; setState: (s: AppState) => void; navigate: (s: string) => void }) {
+// ============ Bonus Screen ============
+function BonusScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const [code, setCode] = useState('');
   const uid = state.session!;
   const attendance = state.attendance[uid] || { lastClaim: 0, streak: 0 };
@@ -658,10 +652,12 @@ function BonusScreen({ state, setState, navigate }: { state: AppState; setState:
     const streak = (attendance.streak + 1) % 7;
     const reward = rewards[streak];
     playSound('win');
-    let newState = updateBalance(state, uid, reward);
-    newState = addTransaction(newState, { uid, type: 'bonus', amount: reward, description: `Day ${streak + 1} Attendance`, status: 'completed' });
-    newState = { ...newState, attendance: { ...newState.attendance, [uid]: { lastClaim: Date.now(), streak } } };
-    setState(newState);
+    setState(prev => {
+      let ns = updateBalance(prev, uid, reward);
+      ns = addTransaction(ns, { uid, type: 'bonus', amount: reward, description: `Day ${streak + 1} Attendance`, status: 'completed' });
+      ns = { ...ns, attendance: { ...ns.attendance, [uid]: { lastClaim: Date.now(), streak } } };
+      return ns;
+    });
     confetti({ particleCount: 30, spread: 50 });
   };
 
@@ -671,10 +667,12 @@ function BonusScreen({ state, setState, navigate }: { state: AppState; setState:
     if (redeemed.includes(code)) { playSound('loss'); return; }
     const bonus = 50;
     playSound('win');
-    let newState = updateBalance(state, uid, bonus);
-    newState = addTransaction(newState, { uid, type: 'bonus', amount: bonus, description: `Gift Code: ${code}`, status: 'completed' });
-    newState = { ...newState, redeemedCodes: { ...newState.redeemedCodes, [uid]: [...redeemed, code] } };
-    setState(newState);
+    setState(prev => {
+      let ns = updateBalance(prev, uid, bonus);
+      ns = addTransaction(ns, { uid, type: 'bonus', amount: bonus, description: `Gift Code: ${code}`, status: 'completed' });
+      ns = { ...ns, redeemedCodes: { ...ns.redeemedCodes, [uid]: [...redeemed, code] } };
+      return ns;
+    });
     setCode('');
     confetti({ particleCount: 40, spread: 60 });
   };
@@ -687,12 +685,12 @@ function BonusScreen({ state, setState, navigate }: { state: AppState; setState:
       </div>
       <div className="px-4 pt-3 space-y-4">
         <div className="bg-gold-gradient rounded-2xl p-4 text-center">
-          <p className="text-xs text-gold-deep font-bold">🎁 DAILY ATTENDANCE</p>
+          <p className="text-xs font-bold" style={{color: '#6B4A1B'}}>🎁 DAILY ATTENDANCE</p>
           <div className="grid grid-cols-7 gap-1 mt-3">
             {rewards.map((r, i) => (
               <div key={i} className={`text-center p-1.5 rounded-lg text-[10px] font-bold ${
-                i < attendance.streak ? 'bg-success/30 text-success' :
-                i === attendance.streak && canClaim ? 'bg-gold/30 text-gold animate-pulse-gold' :
+                i < attendance.streak ? 'bg-green-900/30 text-[#22C55E]' :
+                i === attendance.streak && canClaim ? 'bg-[#FFC93D]/30 text-[#FFC93D] animate-pulse-gold' :
                 'bg-white/10 text-white/40'
               }`}>
                 D{i + 1}
@@ -718,13 +716,13 @@ function BonusScreen({ state, setState, navigate }: { state: AppState; setState:
         <div className="card">
           <p className="text-xs font-bold text-gray-400 uppercase mb-3">🔥 Active Offers</p>
           <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-bg-input rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
               <div><p className="text-xs font-bold text-white">First Deposit Bonus</p><p className="text-[10px] text-gray-500">100% bonus up to ₹500</p></div>
-              <span className="text-[10px] bg-success/20 text-success px-2 py-1 rounded-full font-bold">ACTIVE</span>
+              <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-1 rounded-full font-bold">ACTIVE</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-bg-input rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
               <div><p className="text-xs font-bold text-white">Refer & Earn</p><p className="text-[10px] text-gray-500">₹50 per referral</p></div>
-              <span className="text-[10px] bg-success/20 text-success px-2 py-1 rounded-full font-bold">ACTIVE</span>
+              <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-1 rounded-full font-bold">ACTIVE</span>
             </div>
           </div>
         </div>
@@ -733,15 +731,15 @@ function BonusScreen({ state, setState, navigate }: { state: AppState; setState:
   );
 }
 
-// Profile Screen
-function ProfileScreen({ state, setState, navigate }: { state: AppState; setState: (s: AppState) => void; navigate: (s: string) => void }) {
+// ============ Profile Screen ============
+function ProfileScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const user = getCurrentUser(state);
   const wallet = getCurrentWallet(state);
   if (!user) return null;
 
   const handleLogout = () => {
     playSound('click');
-    setState({ ...state, session: null });
+    setState(prev => ({ ...prev, session: null }));
   };
 
   const menu = [
@@ -756,26 +754,26 @@ function ProfileScreen({ state, setState, navigate }: { state: AppState; setStat
     <div className="pb-24 animate-fade-in">
       <div className="bg-purple-gradient p-6 pt-12 safe-top">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-b from-gold-light to-gold-dark flex items-center justify-center text-2xl border-2 border-gold">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-b from-[#FFE58F] to-[#D4A017] flex items-center justify-center text-2xl border-2 border-[#FFC93D]">
             👤
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">{user.name}</h2>
-            <p className="text-xs text-purple-200 font-mono">UID: {user.uid}</p>
+            <p className="text-xs text-purple-200 font-mono-game">UID: {user.uid}</p>
             <p className="text-[10px] text-purple-300">Invite: {user.inviteCode}</p>
           </div>
         </div>
         <div className="mt-4 bg-white/10 rounded-xl p-3 flex justify-around">
           <div className="text-center">
-            <p className="text-lg font-bold font-mono text-gold">{formatCurrency(wallet?.balance || 0)}</p>
+            <p className="text-lg font-bold font-mono-game text-[#FFC93D]">{formatCurrency(wallet?.balance || 0)}</p>
             <p className="text-[10px] text-purple-200">Balance</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold font-mono text-white">{user.totalBets}</p>
+            <p className="text-lg font-bold font-mono-game text-white">{user.totalBets}</p>
             <p className="text-[10px] text-purple-200">Total Bets</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold font-mono text-success">{user.totalWins}</p>
+            <p className="text-lg font-bold font-mono-game text-[#22C55E]">{user.totalWins}</p>
             <p className="text-[10px] text-purple-200">Wins</p>
           </div>
         </div>
@@ -784,7 +782,7 @@ function ProfileScreen({ state, setState, navigate }: { state: AppState; setStat
         <div className="card">
           {menu.map((item, i) => (
             <button key={i} onClick={item.action}
-              className="flex items-center justify-between w-full py-3.5 border-b border-border-subtle last:border-0">
+              className="flex items-center justify-between w-full py-3.5 border-b border-[#2A2A2A] last:border-0">
               <div className="flex items-center gap-3">
                 <span className="text-lg">{item.icon}</span>
                 <div className="text-left">
@@ -804,7 +802,7 @@ function ProfileScreen({ state, setState, navigate }: { state: AppState; setStat
   );
 }
 
-// VIP Screen
+// ============ VIP Screen ============
 function VipScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const user = getCurrentUser(state);
   const levels = [
@@ -826,29 +824,18 @@ function VipScreen({ state, navigate }: { state: AppState; navigate: (s: string)
         <div className="bg-gold-gradient rounded-2xl p-5 text-center">
           <p className="text-3xl mb-2">⭐</p>
           <p className="text-xl font-black text-white">{currentLevel.name}</p>
-          <p className="text-xs text-gold-deep mt-1">Level {user?.vipLevel || 1}</p>
+          <p className="text-xs mt-1" style={{color: '#6B4A1B'}}>Level {user?.vipLevel || 1}</p>
           <div className="w-full h-2 bg-black/20 rounded-full mt-4 overflow-hidden">
             <div className="h-full bg-white/60 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
-          <p className="text-[10px] text-gold-deep mt-1">Commission: ₹{user?.commissionPaid?.toFixed(0) || 0}</p>
+          <p className="text-[10px] mt-1" style={{color: '#6B4A1B'}}>Commission: ₹{user?.commissionPaid?.toFixed(0) || 0}</p>
         </div>
         <div className="card">
           <p className="text-xs font-bold text-gray-400 uppercase mb-3">Benefits</p>
           {currentLevel.perks.map((perk, i) => (
             <div key={i} className="flex items-center gap-2 py-2">
-              <span className="text-success">✓</span>
+              <span className="text-[#22C55E]">✓</span>
               <span className="text-sm text-gray-300">{perk}</span>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <p className="text-xs font-bold text-gray-400 uppercase mb-3">All Levels</p>
-          {levels.map((l, i) => (
-            <div key={i} className={`flex items-center justify-between py-2.5 border-b border-border-subtle last:border-0 ${
-              i === (user?.vipLevel || 1) - 1 ? 'text-gold' : 'text-gray-400'
-            }`}>
-              <span className="text-sm font-bold">{['🥉', '🥈', '🥇', '💎'][i]} {l.name}</span>
-              <span className="text-xs font-mono">₹{l.min.toLocaleString()}+</span>
             </div>
           ))}
         </div>
@@ -857,8 +844,8 @@ function VipScreen({ state, navigate }: { state: AppState; navigate: (s: string)
   );
 }
 
-// Settings Screen
-function SettingsScreen({ state, setState, navigate }: { state: AppState; setState: (s: AppState) => void; navigate: (s: string) => void }) {
+// ============ Settings Screen ============
+function SettingsScreen({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const handleClearData = () => {
     if (confirm('Clear all data? This cannot be undone!')) {
       localStorage.clear();
@@ -879,8 +866,8 @@ function SettingsScreen({ state, setState, navigate }: { state: AppState; setSta
               <span className="text-lg">🔊</span>
               <span className="text-sm font-semibold text-white">Sound Effects</span>
             </div>
-            <button onClick={() => setState({ ...state, settings: { ...state.settings, soundEnabled: !state.settings.soundEnabled } })}
-              className={`w-12 h-7 rounded-full transition-all ${state.settings.soundEnabled ? 'bg-purple-600' : 'bg-border-strong'}`}>
+            <button onClick={() => setState(prev => ({ ...prev, settings: { ...prev.settings, soundEnabled: !prev.settings.soundEnabled } }))}
+              className={`w-12 h-7 rounded-full transition-all ${state.settings.soundEnabled ? 'bg-purple-600' : 'bg-[#3A3A3A]'}`}>
               <div className={`w-5 h-5 rounded-full bg-white transition-all mx-1 ${state.settings.soundEnabled ? 'translate-x-5' : ''}`} />
             </button>
           </div>
@@ -899,7 +886,7 @@ function SettingsScreen({ state, setState, navigate }: { state: AppState; setSta
   );
 }
 
-// Support Screen
+// ============ Support Screen ============
 function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const faqs = [
@@ -934,7 +921,7 @@ function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
         <div className="card">
           <p className="text-xs font-bold text-gray-400 uppercase mb-3">FAQ</p>
           {faqs.map((faq, i) => (
-            <div key={i} className="border-b border-border-subtle last:border-0">
+            <div key={i} className="border-b border-[#2A2A2A] last:border-0">
               <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between py-3 text-left">
                 <span className="text-sm font-semibold text-white">{faq.q}</span>
@@ -949,7 +936,7 @@ function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
   );
 }
 
-// Games Lobby
+// ============ Games Lobby ============
 function GamesLobby({ navigate }: { navigate: (s: string) => void }) {
   const games = [
     { id: 'slots', icon: '🎰', name: "Joker's Fortune", badge: 'HOT', color: 'from-purple-600 to-purple-900' },
@@ -961,11 +948,9 @@ function GamesLobby({ navigate }: { navigate: (s: string) => void }) {
 
   return (
     <div className="pb-24 animate-fade-in">
-      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('home')} className="text-xl">←</button>
-          <h1 className="text-lg font-bold">All Games</h1>
-        </div>
+      <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
+        <button onClick={() => navigate('home')} className="text-xl">←</button>
+        <h1 className="text-lg font-bold">All Games</h1>
       </div>
       <div className="px-4 pt-3">
         <div className="grid grid-cols-3 gap-3">
@@ -987,7 +972,7 @@ function GamesLobby({ navigate }: { navigate: (s: string) => void }) {
   );
 }
 
-// Invite Screen
+// ============ Invite Screen ============
 function InviteScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const user = getCurrentUser(state);
   return (
@@ -1003,7 +988,7 @@ function InviteScreen({ state, navigate }: { state: AppState; navigate: (s: stri
           <p className="text-sm text-purple-200 mt-2">Share your code and earn for each friend!</p>
           <div className="mt-4 bg-white/10 rounded-xl p-3">
             <p className="text-xs text-purple-200">Your Invite Code</p>
-            <p className="text-2xl font-black font-mono text-gold mt-1">{user?.inviteCode}</p>
+            <p className="text-2xl font-black font-mono-game text-[#FFC93D] mt-1">{user?.inviteCode}</p>
           </div>
           <button onClick={() => { navigator.clipboard?.writeText(user?.inviteCode || ''); playSound('click'); }}
             className="btn-gold mt-4 w-full">Copy Code</button>
@@ -1011,9 +996,16 @@ function InviteScreen({ state, navigate }: { state: AppState; navigate: (s: stri
         <div className="card">
           <p className="text-xs font-bold text-gray-400 uppercase mb-3">How it works</p>
           <div className="space-y-3">
-            <div className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-purple-900/50 flex items-center justify-center text-xs font-bold text-purple-300">1</span><span className="text-sm text-gray-300">Share your invite code</span></div>
-            <div className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-purple-900/50 flex items-center justify-center text-xs font-bold text-purple-300">2</span><span className="text-sm text-gray-300">Friend registers & deposits</span></div>
-            <div className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-purple-900/50 flex items-center justify-center text-xs font-bold text-purple-300">3</span><span className="text-sm text-gray-300">You both get ₹50 bonus!</span></div>
+            {[
+              'Share your invite code',
+              'Friend registers & deposits',
+              'You both get ₹50 bonus!'
+            ].map((step, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-purple-900/50 flex items-center justify-center text-xs font-bold text-purple-300">{i+1}</span>
+                <span className="text-sm text-gray-300">{step}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -1021,7 +1013,7 @@ function InviteScreen({ state, navigate }: { state: AppState; navigate: (s: stri
   );
 }
 
-// Activity Screen
+// ============ Activity Screen ============
 function ActivityScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const recentBets = state.bets.filter(b => b.uid === state.session).slice(0, 10);
   return (
@@ -1040,7 +1032,7 @@ function ActivityScreen({ state, navigate }: { state: AppState; navigate: (s: st
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-400">Bet: {formatCurrency(bet.amount)}</p>
-              <p className={`text-sm font-bold font-mono ${bet.result === 'win' ? 'text-success' : 'text-danger'}`}>
+              <p className={`text-sm font-bold font-mono-game ${bet.result === 'win' ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
                 {bet.result === 'win' ? `+${formatCurrency(bet.payout)}` : `-${formatCurrency(bet.amount)}`}
               </p>
             </div>
@@ -1051,21 +1043,21 @@ function ActivityScreen({ state, navigate }: { state: AppState; navigate: (s: st
   );
 }
 
-// Admin Panel
-function AdminPanel({ state, setState, navigate }: { state: AppState; setState: (s: AppState) => void; navigate: (s: string) => void }) {
+// ============ Admin Panel ============
+function AdminPanel({ state, setState, navigate }: { state: AppState; setState: SetState; navigate: (s: string) => void }) {
   const [tab, setTab] = useState('dashboard');
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(state.adminSession);
 
   if (!authenticated) {
     return (
-      <div className="fixed inset-0 bg-bg-root flex flex-col items-center justify-center p-6">
+      <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center p-6">
         <div className="text-4xl mb-4">🔐</div>
         <h2 className="text-xl font-black text-white mb-2">Admin Panel</h2>
         <input type="password" placeholder="Admin Password" value={password}
           onChange={e => setPassword(e.target.value)} className="input-field w-64 text-center mb-4" />
         <button onClick={() => {
-          if (password === 'admin123') { setAuthenticated(true); setState({ ...state, adminSession: true }); }
+          if (password === 'admin123') { setAuthenticated(true); setState(prev => ({ ...prev, adminSession: true })); }
           else playSound('loss');
         }} className="btn-gold w-64">Enter</button>
         <button onClick={() => navigate('home')} className="text-gray-500 text-sm mt-4">← Back</button>
@@ -1079,20 +1071,20 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
   const totalCommission = state.bets.reduce((s, b) => s + b.commission, 0);
 
   return (
-    <div className="pb-6 animate-fade-in">
+    <div className="pb-6 animate-fade-in min-h-screen bg-[#0A0A0A]">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('home')} className="text-xl">←</button>
           <h1 className="text-lg font-bold">Admin Panel</h1>
         </div>
-        <button onClick={() => { setAuthenticated(false); setState({ ...state, adminSession: false }); }}
+        <button onClick={() => { setAuthenticated(false); setState(prev => ({ ...prev, adminSession: false })); }}
           className="text-xs text-red-400 font-bold">Logout</button>
       </div>
       <div className="flex overflow-x-auto no-scrollbar px-4 py-2 gap-2">
         {tabs.map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap ${
-              tab === t ? 'bg-gold text-black' : 'bg-bg-input text-gray-400'
+              tab === t ? 'bg-[#FFC93D] text-black' : 'bg-[#1A1A1A] text-gray-400'
             }`}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
@@ -1101,12 +1093,12 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
       <div className="px-4 pt-2">
         {tab === 'dashboard' && (
           <div className="grid grid-cols-2 gap-3">
-            <div className="card text-center"><p className="text-2xl font-black font-mono text-gold">{Object.keys(state.users).length}</p><p className="text-[10px] text-gray-500">Users</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono text-success">{formatCurrency(totalBalance)}</p><p className="text-[10px] text-gray-500">Total Balance</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono text-blue">{formatCurrency(totalDeposits)}</p><p className="text-[10px] text-gray-500">Deposits</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono text-purple">{formatCurrency(totalCommission)}</p><p className="text-[10px] text-gray-500">Commission</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono text-amber">{state.bets.length}</p><p className="text-[10px] text-gray-500">Total Bets</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono text-pink">{state.withdrawals.length}</p><p className="text-[10px] text-gray-500">Withdrawals</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#FFC93D]">{Object.keys(state.users).length}</p><p className="text-[10px] text-gray-500">Users</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#22C55E]">{formatCurrency(totalBalance)}</p><p className="text-[10px] text-gray-500">Total Balance</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#3B82F6]">{formatCurrency(totalDeposits)}</p><p className="text-[10px] text-gray-500">Deposits</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-purple-400">{formatCurrency(totalCommission)}</p><p className="text-[10px] text-gray-500">Commission</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-amber-400">{state.bets.length}</p><p className="text-[10px] text-gray-500">Total Bets</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-pink-400">{state.withdrawals.length}</p><p className="text-[10px] text-gray-500">Withdrawals</p></div>
           </div>
         )}
         {tab === 'users' && (
@@ -1118,12 +1110,12 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
                   <p className="text-[10px] text-gray-500">UID: {u.uid} • {u.phone}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold font-mono text-gold">{formatCurrency(state.wallets[u.uid]?.balance || 0)}</p>
+                  <p className="text-sm font-bold font-mono-game text-[#FFC93D]">{formatCurrency(state.wallets[u.uid]?.balance || 0)}</p>
                   <div className="flex gap-1 mt-1">
-                    <button onClick={() => { let ns = updateBalance(state, u.uid, 500); setState(ns); }}
-                      className="text-[9px] bg-success/20 text-success px-1.5 py-0.5 rounded">+500</button>
-                    <button onClick={() => { let ns = updateBalance(state, u.uid, -100); setState(ns); }}
-                      className="text-[9px] bg-danger/20 text-danger px-1.5 py-0.5 rounded">-100</button>
+                    <button onClick={() => setState(prev => updateBalance(prev, u.uid, 500))}
+                      className="text-[9px] bg-green-900/30 text-[#22C55E] px-1.5 py-0.5 rounded">+500</button>
+                    <button onClick={() => setState(prev => updateBalance(prev, u.uid, -100))}
+                      className="text-[9px] bg-red-900/30 text-[#EF4444] px-1.5 py-0.5 rounded">-100</button>
                   </div>
                 </div>
               </div>
@@ -1150,14 +1142,16 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
                   {w.status === 'pending' && (
                     <div className="flex gap-1">
                       <button onClick={() => {
-                        setState({ ...state, withdrawals: state.withdrawals.map(x => x.id === w.id ? { ...x, status: 'approved' as const } : x) });
-                      }} className="text-[9px] bg-success/20 text-success px-2 py-0.5 rounded">Approve</button>
+                        setState(prev => ({ ...prev, withdrawals: prev.withdrawals.map(x => x.id === w.id ? { ...x, status: 'approved' as const } : x) }));
+                      }} className="text-[9px] bg-green-900/30 text-[#22C55E] px-2 py-0.5 rounded">Approve</button>
                       <button onClick={() => {
-                        let ns = updateBalance(state, w.uid, w.amount);
-                        ns = addTransaction(ns, { uid: w.uid, type: 'withdraw', amount: w.amount, description: 'Withdrawal rejected (refund)', status: 'completed' });
-                        ns = { ...ns, withdrawals: ns.withdrawals.map(x => x.id === w.id ? { ...x, status: 'rejected' as const } : x) };
-                        setState(ns);
-                      }} className="text-[9px] bg-danger/20 text-danger px-2 py-0.5 rounded">Reject</button>
+                        setState(prev => {
+                          let ns = updateBalance(prev, w.uid, w.amount);
+                          ns = addTransaction(ns, { uid: w.uid, type: 'withdraw', amount: w.amount, description: 'Withdrawal rejected (refund)', status: 'completed' });
+                          ns = { ...ns, withdrawals: ns.withdrawals.map(x => x.id === w.id ? { ...x, status: 'rejected' as const } : x) };
+                          return ns;
+                        });
+                      }} className="text-[9px] bg-red-900/30 text-[#EF4444] px-2 py-0.5 rounded">Reject</button>
                     </div>
                   )}
                 </div>
@@ -1169,15 +1163,15 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
           <div className="space-y-3">
             <div className="card text-center">
               <p className="text-xs text-gray-400">Total Bets</p>
-              <p className="text-2xl font-black font-mono text-gold">{state.bets.length}</p>
+              <p className="text-2xl font-black font-mono-game text-[#FFC93D]">{state.bets.length}</p>
             </div>
             <div className="card text-center">
               <p className="text-xs text-gray-400">Total Wagered</p>
-              <p className="text-2xl font-black font-mono text-blue">{formatCurrency(state.bets.reduce((s, b) => s + b.amount, 0))}</p>
+              <p className="text-2xl font-black font-mono-game text-[#3B82F6]">{formatCurrency(state.bets.reduce((s, b) => s + b.amount, 0))}</p>
             </div>
             <div className="card text-center">
               <p className="text-xs text-gray-400">Commission Earned</p>
-              <p className="text-2xl font-black font-mono text-success">{formatCurrency(totalCommission)}</p>
+              <p className="text-2xl font-black font-mono-game text-[#22C55E]">{formatCurrency(totalCommission)}</p>
             </div>
           </div>
         )}
@@ -1186,7 +1180,7 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
             <div className="flex justify-between"><span className="text-xs text-gray-400">Commission Rate</span><span className="text-xs font-bold text-white">{(state.settings.commissionRate * 100).toFixed(0)}%</span></div>
             <div className="flex justify-between"><span className="text-xs text-gray-400">Min Deposit</span><span className="text-xs font-bold text-white">₹{state.settings.minDeposit}</span></div>
             <div className="flex justify-between"><span className="text-xs text-gray-400">Max Deposit</span><span className="text-xs font-bold text-white">₹{state.settings.maxDeposit.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-xs text-gray-400">UPI VPA</span><span className="text-xs font-bold text-gold">{state.settings.upiVpa}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-400">UPI VPA</span><span className="text-xs font-bold text-[#FFC93D]">{state.settings.upiVpa}</span></div>
             <button onClick={() => { if (confirm('Reset ALL data?')) { localStorage.clear(); window.location.reload(); } }}
               className="w-full py-3 mt-4 border border-red-900/50 rounded-xl text-red-400 font-bold text-xs">
               🗑️ Reset All Data
@@ -1201,7 +1195,7 @@ function AdminPanel({ state, setState, navigate }: { state: AppState; setState: 
                   <p className="text-sm font-bold text-white">{formatCurrency(tx.amount)}</p>
                   <p className="text-[10px] text-gray-500">{tx.description}</p>
                 </div>
-                <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full font-bold">{tx.status}</span>
+                <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-0.5 rounded-full font-bold">{tx.status}</span>
               </div>
             ))}
           </div>
