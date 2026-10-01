@@ -395,6 +395,7 @@ export function BonusScreen({ state, setState, navigate }: { state: AppState; se
   const rewards = [10, 20, 30, 50, 75, 100, 200];
   const today = new Date().toDateString();
   const canClaim = new Date(attendance.lastClaim).toDateString() !== today;
+  
   const handleClaim = () => {
     if (!canClaim) return;
     const streak = (attendance.streak + 1) % 7;
@@ -408,6 +409,23 @@ export function BonusScreen({ state, setState, navigate }: { state: AppState; se
     });
     confetti({ particleCount: 30, spread: 50 });
   };
+
+  const handleRedeem = () => {
+    if (code.length < 4) { playSound('loss'); return; }
+    const redeemed = state.redeemedCodes[uid] || [];
+    if (redeemed.includes(code)) { playSound('loss'); alert('Code already redeemed!'); return; }
+    const bonus = 50;
+    playSound('win');
+    setState((prev: AppState) => {
+      let ns = updateBalance(prev, uid, bonus);
+      ns = addTransaction(ns, { uid, type: 'bonus', amount: bonus, description: `Gift Code: ${code}`, status: 'completed' });
+      ns = { ...ns, redeemedCodes: { ...ns.redeemedCodes, [uid]: [...redeemed, code] } };
+      return ns;
+    });
+    setCode('');
+    confetti({ particleCount: 40, spread: 60 });
+  };
+
   return (
     <div className="pb-24 animate-fade-in">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
@@ -419,14 +437,41 @@ export function BonusScreen({ state, setState, navigate }: { state: AppState; se
           <p className="text-xs font-bold" style={{color: '#6B4A1B'}}>🎁 DAILY ATTENDANCE</p>
           <div className="grid grid-cols-7 gap-1 mt-3">
             {rewards.map((r, i) => (
-              <div key={i} className={`text-center p-1.5 rounded-lg text-[10px] font-bold ${i < attendance.streak ? 'bg-green-900/30 text-[#22C55E]' : i === attendance.streak && canClaim ? 'bg-[#FFC93D]/30 text-[#FFC93D]' : 'bg-white/10 text-white/40'}`}>
+              <div key={i} className={`text-center p-1.5 rounded-lg text-[10px] font-bold ${i < attendance.streak ? 'bg-green-900/30 text-[#22C55E]' : i === attendance.streak && canClaim ? 'bg-[#FFC93D]/30 text-[#FFC93D] animate-pulse-gold' : 'bg-white/10 text-white/40'}`}>
                 D{i+1}<br/>₹{r}
               </div>
             ))}
           </div>
-          <button onClick={handleClaim} disabled={!canClaim} className={`mt-3 w-full py-3 rounded-xl font-bold text-sm ${canClaim ? 'btn-gold' : 'bg-gray-700 text-gray-400'}`}>
+          <button onClick={handleClaim} disabled={!canClaim} className={`mt-3 w-full py-3 rounded-xl font-bold text-sm ${canClaim ? 'btn-gold' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}>
             {canClaim ? '✓ Claim Today' : '✓ Claimed Today'}
           </button>
+        </div>
+        
+        <div className="card space-y-3">
+          <p className="text-xs font-bold text-gray-400 uppercase">🎫 Redeem Gift Code</p>
+          <div className="flex gap-2">
+            <input type="text" placeholder="Enter code" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="input-field flex-1" />
+            <button onClick={handleRedeem} className="btn-gold px-6">Redeem</button>
+          </div>
+          <p className="text-[10px] text-gray-500">Get ₹50 bonus on valid codes</p>
+        </div>
+
+        <div className="card">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-3">🔥 Active Offers</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
+              <div><p className="text-xs font-bold text-white">First Deposit Bonus</p><p className="text-[10px] text-gray-500">100% bonus up to ₹500</p></div>
+              <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-1 rounded-full font-bold">ACTIVE</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
+              <div><p className="text-xs font-bold text-white">Refer & Earn</p><p className="text-[10px] text-gray-500">₹50 per referral</p></div>
+              <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-1 rounded-full font-bold">ACTIVE</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
+              <div><p className="text-xs font-bold text-white">Weekly Cashback</p><p className="text-[10px] text-gray-500">5% on losses</p></div>
+              <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-1 rounded-full font-bold">ACTIVE</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -472,6 +517,15 @@ export function ProfileScreen({ state, setState, navigate }: { state: AppState; 
 
 export function InviteScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const user = getCurrentUser(state);
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(user?.inviteCode || '');
+    playSound('click');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="pb-24 animate-fade-in">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
@@ -479,14 +533,57 @@ export function InviteScreen({ state, navigate }: { state: AppState; navigate: (
         <h1 className="text-lg font-bold">Invite & Earn</h1>
       </div>
       <div className="px-4 pt-3 space-y-4">
-        <div className="bg-purple-gradient rounded-2xl p-6 text-center">
-          <p className="text-4xl mb-3">🎁</p>
-          <h2 className="text-xl font-black text-white">Refer & Earn ₹50</h2>
-          <div className="mt-4 bg-white/10 rounded-xl p-3">
+        <div className="bg-purple-gradient rounded-2xl p-6 text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <p className="text-4xl mb-3 relative z-10">🎁</p>
+          <h2 className="text-xl font-black text-white relative z-10">Refer & Earn ₹50</h2>
+          <p className="text-sm text-purple-200 mt-2 relative z-10">Share your code and earn for each friend!</p>
+          <div className="mt-4 bg-white/10 rounded-xl p-3 relative z-10">
             <p className="text-xs text-purple-200">Your Invite Code</p>
             <p className="text-2xl font-black font-mono-game text-[#FFC93D] mt-1">{user?.inviteCode}</p>
           </div>
-          <button onClick={() => { navigator.clipboard?.writeText(user?.inviteCode || ''); playSound('click'); }} className="btn-gold mt-4 w-full">📋 Copy Code</button>
+          <button onClick={handleCopy} className={`mt-4 w-full ${copied ? 'bg-[#22C55E]' : 'btn-gold'}`}>
+            {copied ? '✓ Copied!' : '📋 Copy Code'}
+          </button>
+        </div>
+
+        <div className="card">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-3">How it works</p>
+          <div className="space-y-3">
+            {[
+              { step: 1, text: 'Share your invite code with friends' },
+              { step: 2, text: 'Friend registers & deposits ₹100+' },
+              { step: 3, text: 'You both get ₹50 bonus instantly!' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">{item.step}</span>
+                <span className="text-sm text-gray-300">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-3">Share via</p>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { icon: '💬', name: 'WhatsApp' },
+              { icon: '📱', name: 'SMS' },
+              { icon: '📧', name: 'Email' },
+              { icon: '📋', name: 'Copy' },
+            ].map((item, i) => (
+              <button key={i} onClick={handleCopy} className="flex flex-col items-center gap-1 p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl active:scale-95 transition-transform">
+                <span className="text-2xl">{item.icon}</span>
+                <span className="text-[10px] font-bold text-gray-300">{item.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-green-900/20 border border-green-800/50 rounded-xl p-4">
+          <p className="text-xs text-green-400 text-center">
+            💡 <b>Pro Tip:</b> Share on social media & earn unlimited bonuses!
+          </p>
         </div>
       </div>
     </div>
@@ -534,6 +631,14 @@ export function SettingsScreen({ state, setState, navigate }: { state: AppState;
 }
 
 export function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const faqs = [
+    { q: 'How to deposit?', a: 'Go to Wallet > Deposit, enter amount, choose UPI/USDT, and complete payment. Funds credited in 1-5 minutes.' },
+    { q: 'Withdrawal time?', a: 'Withdrawals are processed within 10-30 minutes during business hours. UPI is instant.' },
+    { q: 'Minimum withdrawal?', a: 'Minimum withdrawal amount is ₹110 via UPI. Maximum is ₹1,00,000 per day.' },
+    { q: 'Is it safe?', a: 'Yes! We use encrypted transactions, secure servers, and fair gaming algorithms certified by independent auditors.' },
+    { q: 'How to contact support?', a: 'Use live chat for instant help or email support@legacywin.com. Response time: under 5 minutes.' },
+  ];
   return (
     <div className="pb-24 animate-fade-in">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
@@ -541,8 +646,31 @@ export function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
         <h1 className="text-lg font-bold">Support</h1>
       </div>
       <div className="px-4 pt-3 space-y-4">
-        <div className="card flex items-center gap-3 p-4"><span className="text-3xl">💬</span><div><p className="text-sm font-bold text-white">Live Chat</p><p className="text-[10px] text-gray-500">Available 24/7</p></div><button className="ml-auto btn-gold text-xs py-2 px-4">Chat</button></div>
-        <div className="card flex items-center gap-3 p-4"><span className="text-3xl">📧</span><div><p className="text-sm font-bold text-white">Email Support</p><p className="text-[10px] text-gray-500">support@legacywin.com</p></div></div>
+        <div className="card flex items-center gap-3 p-4">
+          <span className="text-3xl">💬</span>
+          <div><p className="text-sm font-bold text-white">Live Chat</p><p className="text-[10px] text-gray-500">Available 24/7 • Avg response: 2 min</p></div>
+          <button className="ml-auto btn-gold text-xs py-2 px-4">Chat</button>
+        </div>
+        <div className="card flex items-center gap-3 p-4">
+          <span className="text-3xl">📧</span>
+          <div><p className="text-sm font-bold text-white">Email Support</p><p className="text-[10px] text-gray-500">support@legacywin.com</p></div>
+        </div>
+        <div className="card flex items-center gap-3 p-4">
+          <span className="text-3xl">📞</span>
+          <div><p className="text-sm font-bold text-white">Phone Support</p><p className="text-[10px] text-gray-500">+91 9876543210 (10 AM - 8 PM)</p></div>
+        </div>
+        <div className="card">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-3">❓ Frequently Asked Questions</p>
+          {faqs.map((faq, i) => (
+            <div key={i} className="border-b border-[#2A2A2A] last:border-0">
+              <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full flex items-center justify-between py-3 text-left">
+                <span className="text-sm font-semibold text-white">{faq.q}</span>
+                <span className={`text-gray-500 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+              {openFaq === i && <p className="text-xs text-gray-400 pb-3 leading-relaxed">{faq.a}</p>}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -550,17 +678,47 @@ export function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
 
 export function VipScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const user = getCurrentUser(state);
+  const levels = [
+    { name: 'Bronze', min: 0, perks: ['Daily bonus ₹10', 'Basic support'] },
+    { name: 'Silver', min: 5000, perks: ['Daily bonus ₹25', 'Priority support', '5% cashback'] },
+    { name: 'Gold', min: 20000, perks: ['Daily bonus ₹50', 'VIP support', '10% cashback', 'Exclusive games'] },
+    { name: 'Diamond', min: 50000, perks: ['Daily bonus ₹100', 'Personal manager', '15% cashback', 'All perks'] },
+  ];
+  const currentLevel = levels[Math.min((user?.vipLevel || 1) - 1, 3)];
+  const progress = ((user?.commissionPaid || 0) / 5000) * 100;
   return (
     <div className="pb-24 animate-fade-in">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center gap-3 safe-top">
         <button onClick={() => navigate('profile')} className="text-xl">←</button>
         <h1 className="text-lg font-bold">VIP Club</h1>
       </div>
-      <div className="px-4 pt-3">
+      <div className="px-4 pt-3 space-y-4">
         <div className="bg-gold-gradient rounded-2xl p-5 text-center">
           <p className="text-3xl mb-2">⭐</p>
-          <p className="text-xl font-black text-white">{['Bronze', 'Silver', 'Gold', 'Diamond'][Math.min((user?.vipLevel || 1) - 1, 3)]}</p>
+          <p className="text-xl font-black text-white">{currentLevel.name}</p>
           <p className="text-xs mt-1" style={{color: '#6B4A1B'}}>Level {user?.vipLevel || 1}</p>
+          <div className="w-full h-2 bg-black/20 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-white/60 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
+          </div>
+          <p className="text-[10px] mt-1" style={{color: '#6B4A1B'}}>Commission: ₹{user?.commissionPaid?.toFixed(0) || 0}</p>
+        </div>
+        <div className="card">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-3">Benefits</p>
+          {currentLevel.perks.map((perk, i) => (
+            <div key={i} className="flex items-center gap-2 py-2">
+              <span className="text-[#22C55E]">✓</span>
+              <span className="text-sm text-gray-300">{perk}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-3">All Levels</p>
+          {levels.map((l, i) => (
+            <div key={i} className={`flex items-center justify-between py-2.5 border-b border-[#2A2A2A] last:border-0 ${i === (user?.vipLevel || 1) - 1 ? 'text-[#FFC93D]' : 'text-gray-400'}`}>
+              <span className="text-sm font-bold">{['🥉', '🥈', '🥇', '💎'][i]} {l.name}</span>
+              <span className="text-xs font-mono">₹{l.min.toLocaleString()}+</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -598,19 +756,25 @@ export function AdminPanel({ state, setState, navigate }: { state: AppState; set
   const [tab, setTab] = useState('dashboard');
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(state.adminSession);
+  
   if (!authenticated) {
     return (
       <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center p-6">
         <div className="text-4xl mb-4">🔐</div>
         <h2 className="text-xl font-black text-white mb-2">Admin Panel</h2>
+        <p className="text-xs text-gray-500 mb-4">Enter admin password to continue</p>
         <input type="password" placeholder="Admin Password" value={password} onChange={e => setPassword(e.target.value)} className="input-field w-64 text-center mb-4" />
         <button onClick={() => { if (password === 'admin123') { setAuthenticated(true); setState((prev: AppState) => ({ ...prev, adminSession: true })); } else playSound('loss'); }} className="btn-gold w-64">Enter</button>
         <button onClick={() => navigate('home')} className="text-gray-500 text-sm mt-4">← Back</button>
       </div>
     );
   }
+  
   const totalBalance = Object.values(state.wallets).reduce((s, w) => s + w.balance, 0);
+  const totalDeposits = state.transactions.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0);
   const totalCommission = state.bets.reduce((s, b) => s + b.commission, 0);
+  const tabs = ['dashboard', 'users', 'deposits', 'withdrawals', 'games', 'settings'];
+  
   return (
     <div className="pb-6 animate-fade-in min-h-screen bg-[#0A0A0A]">
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top">
@@ -618,7 +782,7 @@ export function AdminPanel({ state, setState, navigate }: { state: AppState; set
         <button onClick={() => { setAuthenticated(false); setState((prev: AppState) => ({ ...prev, adminSession: false })); }} className="text-xs text-red-400 font-bold">Logout</button>
       </div>
       <div className="flex overflow-x-auto no-scrollbar px-4 py-2 gap-2">
-        {['dashboard', 'users', 'withdrawals', 'games'].map(t => (
+        {tabs.map(t => (
           <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap ${tab === t ? 'bg-[#FFC93D] text-black' : 'bg-[#1A1A1A] text-gray-400'}`}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
         ))}
       </div>
@@ -626,28 +790,64 @@ export function AdminPanel({ state, setState, navigate }: { state: AppState; set
         {tab === 'dashboard' && (
           <div className="grid grid-cols-2 gap-3">
             <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#FFC93D]">{Object.keys(state.users).length}</p><p className="text-[10px] text-gray-500">Users</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#22C55E]">{formatCurrency(totalBalance)}</p><p className="text-[10px] text-gray-500">Balance</p></div>
-            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-amber-400">{state.bets.length}</p><p className="text-[10px] text-gray-500">Bets</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#22C55E]">{formatCurrency(totalBalance)}</p><p className="text-[10px] text-gray-500">Total Balance</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-[#3B82F6]">{formatCurrency(totalDeposits)}</p><p className="text-[10px] text-gray-500">Deposits</p></div>
             <div className="card text-center"><p className="text-2xl font-black font-mono-game text-purple-400">{formatCurrency(totalCommission)}</p><p className="text-[10px] text-gray-500">Commission</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-amber-400">{state.bets.length}</p><p className="text-[10px] text-gray-500">Total Bets</p></div>
+            <div className="card text-center"><p className="text-2xl font-black font-mono-game text-pink-400">{state.withdrawals.length}</p><p className="text-[10px] text-gray-500">Withdrawals</p></div>
           </div>
         )}
         {tab === 'users' && <div className="space-y-2">{Object.values(state.users).map(u => (
           <div key={u.uid} className="card flex items-center justify-between">
-            <div><p className="text-sm font-bold text-white">{u.name}</p><p className="text-[10px] text-gray-500">UID: {u.uid}</p></div>
-            <p className="text-sm font-bold font-mono-game text-[#FFC93D]">{formatCurrency(state.wallets[u.uid]?.balance || 0)}</p>
+            <div><p className="text-sm font-bold text-white">{u.name}</p><p className="text-[10px] text-gray-500">UID: {u.uid} • {u.phone}</p></div>
+            <div className="text-right">
+              <p className="text-sm font-bold font-mono-game text-[#FFC93D]">{formatCurrency(state.wallets[u.uid]?.balance || 0)}</p>
+              <div className="flex gap-1 mt-1">
+                <button onClick={() => setState((prev: AppState) => updateBalance(prev, u.uid, 500))} className="text-[9px] bg-green-900/30 text-[#22C55E] px-1.5 py-0.5 rounded">+500</button>
+                <button onClick={() => setState((prev: AppState) => updateBalance(prev, u.uid, -100))} className="text-[9px] bg-red-900/30 text-[#EF4444] px-1.5 py-0.5 rounded">-100</button>
+              </div>
+            </div>
           </div>
         ))}</div>}
+        {tab === 'deposits' && (
+          <div className="space-y-2">
+            {state.transactions.filter(t => t.type === 'deposit').slice(0, 20).map(tx => (
+              <div key={tx.id} className="card flex items-center justify-between">
+                <div><p className="text-sm font-bold text-white">{formatCurrency(tx.amount)}</p><p className="text-[10px] text-gray-500">{tx.description}</p></div>
+                <span className="text-[10px] bg-green-900/30 text-[#22C55E] px-2 py-0.5 rounded-full font-bold">{tx.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {tab === 'withdrawals' && <div className="space-y-2">{state.withdrawals.length === 0 ? <p className="text-center text-gray-500 py-8">No withdrawals</p> :
           state.withdrawals.map(w => (
             <div key={w.id} className="card flex items-center justify-between">
-              <div><p className="text-sm font-bold text-white">{formatCurrency(w.amount)}</p><p className="text-[10px] text-gray-500">{w.upiId}</p></div>
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${w.status === 'pending' ? 'bg-amber-900/30 text-amber-400' : w.status === 'approved' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>{w.status}</span>
+              <div><p className="text-sm font-bold text-white">{formatCurrency(w.amount)}</p><p className="text-[10px] text-gray-500">{w.upiId} • {w.holderName}</p></div>
+              <div className="flex flex-col gap-1">
+                <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${w.status === 'pending' ? 'bg-amber-900/30 text-amber-400' : w.status === 'approved' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>{w.status}</span>
+                {w.status === 'pending' && (
+                  <div className="flex gap-1">
+                    <button onClick={() => setState((prev: AppState) => ({ ...prev, withdrawals: prev.withdrawals.map(x => x.id === w.id ? { ...x, status: 'approved' } : x) }))} className="text-[9px] bg-green-900/30 text-[#22C55E] px-2 py-0.5 rounded">Approve</button>
+                    <button onClick={() => setState((prev: AppState) => { let ns = updateBalance(prev, w.uid, w.amount); ns = { ...ns, withdrawals: ns.withdrawals.map(x => x.id === w.id ? { ...x, status: 'rejected' } : x) }; return ns; })} className="text-[9px] bg-red-900/30 text-[#EF4444] px-2 py-0.5 rounded">Reject</button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}</div>}
         {tab === 'games' && <div className="space-y-3">
           <div className="card text-center"><p className="text-xs text-gray-400">Total Bets</p><p className="text-2xl font-black font-mono-game text-[#FFC93D]">{state.bets.length}</p></div>
-          <div className="card text-center"><p className="text-xs text-gray-400">Commission</p><p className="text-2xl font-black font-mono-game text-[#22C55E]">{formatCurrency(totalCommission)}</p></div>
+          <div className="card text-center"><p className="text-xs text-gray-400">Total Wagered</p><p className="text-2xl font-black font-mono-game text-[#3B82F6]">{formatCurrency(state.bets.reduce((s, b) => s + b.amount, 0))}</p></div>
+          <div className="card text-center"><p className="text-xs text-gray-400">Commission Earned</p><p className="text-2xl font-black font-mono-game text-[#22C55E]">{formatCurrency(totalCommission)}</p></div>
         </div>}
+        {tab === 'settings' && (
+          <div className="card space-y-3">
+            <div className="flex justify-between"><span className="text-xs text-gray-400">Commission Rate</span><span className="text-xs font-bold text-white">{(state.settings.commissionRate * 100).toFixed(0)}%</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-400">Min Deposit</span><span className="text-xs font-bold text-white">₹{state.settings.minDeposit}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-400">Max Deposit</span><span className="text-xs font-bold text-white">₹{state.settings.maxDeposit.toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-400">UPI VPA</span><span className="text-xs font-bold text-[#FFC93D]">{state.settings.upiVpa}</span></div>
+            <button onClick={() => { if (confirm('Reset ALL data?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-3 mt-4 border border-red-900/50 rounded-xl text-red-400 font-bold text-xs">🗑️ Reset All Data</button>
+          </div>
+        )}
       </div>
     </div>
   );
