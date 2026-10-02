@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Legacy Win - Main App Component
 import { useState, useEffect, useCallback, useRef, Component } from 'react';
+import { Home, BarChart3, Gift, Users, User } from 'lucide-react';
 import { loadState, saveState } from './store';
 import { playSound } from './utils';
 import { AuthScreen } from './components/auth/AuthScreen';
@@ -32,24 +33,27 @@ class ErrorBoundary extends Component {
 
 function BottomNav({ current, navigate }: { current: string; navigate: (s: string) => void }) {
   const tabs = [
-    { id: 'home', icon: '🏠', label: 'Home' },
-    { id: 'activity', icon: '📊', label: 'Activity' },
-    { id: 'bonus', icon: '🎁', label: '₹500', center: true },
-    { id: 'invite', icon: '👥', label: 'Invite' },
-    { id: 'profile', icon: '👤', label: 'Account' },
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'activity', icon: BarChart3, label: 'Activity' },
+    { id: 'bonus', icon: Gift, label: '₹500', center: true },
+    { id: 'invite', icon: Users, label: 'Invite' },
+    { id: 'profile', icon: User, label: 'Account' },
   ];
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-lg mx-auto bg-[#141414] border-t border-[#2A2A2A] px-2 py-1.5 flex items-center justify-around">
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => { playSound('click'); navigate(tab.id); }}
-            className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
-              tab.center ? 'bg-gradient-to-b from-[#FFE58F] to-[#FFC93D] -mt-5 shadow-lg shadow-[#FFC93D]/30 rounded-full px-5 py-2.5' : current === tab.id ? 'text-[#FFC93D]' : 'text-gray-500'
-            }`}>
-            <span className={tab.center ? 'text-lg' : 'text-xl'}>{tab.icon}</span>
-            <span className={`text-[9px] font-bold ${tab.center ? 'text-black' : ''}`}>{tab.label}</span>
-          </button>
-        ))}
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.id} onClick={() => { playSound('click'); navigate(tab.id); }}
+              className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+                tab.center ? 'bg-gradient-to-b from-[#FFE58F] to-[#FFC93D] -mt-5 shadow-lg shadow-[#FFC93D]/30 rounded-full px-5 py-2.5' : current === tab.id ? 'text-[#FFC93D]' : 'text-gray-500'
+              }`}>
+              <Icon className={tab.center ? 'w-5 h-5' : 'w-6 h-6'} />
+              <span className={`text-[9px] font-bold ${tab.center ? 'text-black' : ''}`}>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -2,6 +2,14 @@
 // All Screens - Home, Wallet, Deposit, Withdraw, Profile, etc.
 import { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
+import { 
+  Crown, Bell, Gift, History, Users, Star, TrendingUp, 
+  Wallet, CreditCard, ArrowDownLeft, ArrowUpRight, 
+  ChevronRight, Settings, HelpCircle, LogOut, Copy,
+  CheckCircle, XCircle, Clock, AlertCircle, Info,
+  Zap, Shield, Gamepad2, Sparkles, Trophy, Flame,
+  Phone, Mail, MessageCircle, Ticket, User
+} from 'lucide-react';
 import type { AppState } from '../../store/types';
 import { getCurrentUser, getCurrentWallet, updateBalance, addTransaction } from '../../store';
 import { playSound, formatCurrency, formatTime, formatDate, validateUPI } from '../../utils';
@@ -89,11 +97,12 @@ export function HomeScreen({ state, navigate }: { state: AppState; navigate: (s:
       {/* Sticky Header with Logo */}
       <div className="sticky top-0 z-30 glass px-4 py-3 flex items-center justify-between safe-top border-b border-[#2A2A2A]">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">👑</span>
+          <Crown className="w-7 h-7 text-[#FFC93D]" />
           <span className="font-logo text-lg font-black text-gold-gradient">LEGACY WIN</span>
         </div>
-        <button className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center text-lg active:scale-95 transition-transform">
-          🔔
+        <button className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center active:scale-95 transition-transform relative">
+          <Bell className="w-5 h-5 text-gray-400" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
         </button>
       </div>
 
@@ -113,22 +122,27 @@ export function HomeScreen({ state, navigate }: { state: AppState; navigate: (s:
             </div>
             
             <div className="bg-black/30 rounded-2xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">💰 Wallet Balance</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="w-4 h-4 text-gray-400" />
+                <p className="text-xs text-gray-400 uppercase tracking-wider">Wallet Balance</p>
+              </div>
               <p className="text-4xl font-black font-mono-game text-[#FFC93D] mb-4">
                 {formatCurrency(wallet?.balance || 0)}
               </p>
               <div className="flex gap-3">
                 <button 
                   onClick={() => navigate('deposit')}
-                  className="flex-1 btn-gold py-3 text-sm font-bold active:scale-95 transition-transform"
+                  className="flex-1 btn-gold py-3 text-sm font-bold active:scale-95 transition-transform flex items-center justify-center gap-2"
                 >
-                  💳 Deposit
+                  <ArrowDownLeft className="w-4 h-4" />
+                  Deposit
                 </button>
                 <button 
                   onClick={() => navigate('withdraw')}
-                  className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl py-3 text-sm font-bold text-white active:scale-95 transition-all"
+                  className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl py-3 text-sm font-bold text-white active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                  💸 Withdraw
+                  <ArrowUpRight className="w-4 h-4" />
+                  Withdraw
                 </button>
               </div>
             </div>
@@ -138,20 +152,23 @@ export function HomeScreen({ state, navigate }: { state: AppState; navigate: (s:
         {/* Quick Actions */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { icon: '🎁', label: 'Bonus', action: () => navigate('bonus') },
-            { icon: '📊', label: 'History', action: () => navigate('history') },
-            { icon: '👥', label: 'Invite', action: () => navigate('invite') },
-            { icon: '⭐', label: 'VIP', action: () => navigate('vip') },
-          ].map((item, i) => (
-            <button 
-              key={i}
-              onClick={item.action}
-              className="flex flex-col items-center gap-2 p-3 bg-[#141414] border border-[#2A2A2A] rounded-2xl active:scale-95 transition-transform hover:border-[#FFC93D]/50"
-            >
-              <span className="text-2xl">{item.icon}</span>
-              <span className="text-[10px] font-bold text-gray-400">{item.label}</span>
-            </button>
-          ))}
+            { icon: Gift, label: 'Bonus', action: () => navigate('bonus'), color: 'text-pink-400' },
+            { icon: History, label: 'History', action: () => navigate('history'), color: 'text-blue-400' },
+            { icon: Users, label: 'Invite', action: () => navigate('invite'), color: 'text-green-400' },
+            { icon: Star, label: 'VIP', action: () => navigate('vip'), color: 'text-yellow-400' },
+          ].map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <button 
+                key={i}
+                onClick={item.action}
+                className="flex flex-col items-center gap-2 p-3 bg-[#141414] border border-[#2A2A2A] rounded-2xl active:scale-95 transition-transform hover:border-[#FFC93D]/50"
+              >
+                <Icon className={`w-6 h-6 ${item.color}`} />
+                <span className="text-[10px] font-bold text-gray-400">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Live Players Ticker */}
@@ -197,10 +214,10 @@ export function HomeScreen({ state, navigate }: { state: AppState; navigate: (s:
 export function WalletScreen({ state, navigate }: { state: AppState; navigate: (s: string) => void }) {
   const wallet = getCurrentWallet(state);
   const menu = [
-    { icon: '📊', label: 'Transaction History', action: () => navigate('history') },
-    { icon: '🎁', label: 'Bonus & Offers', action: () => navigate('bonus') },
-    { icon: '💳', label: 'Payment Methods', action: () => {} },
-    { icon: '🎫', label: 'Redeem Coupon', action: () => navigate('bonus') },
+    { icon: History, label: 'Transaction History', action: () => navigate('history'), color: 'text-blue-400' },
+    { icon: Gift, label: 'Bonus & Offers', action: () => navigate('bonus'), color: 'text-pink-400' },
+    { icon: CreditCard, label: 'Payment Methods', action: () => {}, color: 'text-green-400' },
+    { icon: Ticket, label: 'Redeem Coupon', action: () => navigate('bonus'), color: 'text-purple-400' },
   ];
   return (
     <div className="pb-24 animate-fade-in">
@@ -209,20 +226,35 @@ export function WalletScreen({ state, navigate }: { state: AppState; navigate: (
         <h1 className="text-lg font-bold">Wallet</h1>
       </div>
       <div className="px-4 pt-3 space-y-4">
-        <div className="bg-purple-gradient rounded-2xl p-5 text-center">
-          <p className="text-xs text-purple-200 uppercase tracking-wider">Available Balance</p>
-          <p className="text-3xl font-black font-mono-game text-white mt-2">{formatCurrency(wallet?.balance || 0)}</p>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => navigate('deposit')} className="flex-1 btn-gold text-xs py-3">💰 Deposit</button>
-            <button onClick={() => navigate('withdraw')} className="flex-1 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-xs py-3 active:scale-95 transition-transform">💸 Withdraw</button>
+        <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 rounded-2xl p-5 text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFC93D]/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+          <div className="relative z-10">
+            <p className="text-xs text-purple-200 uppercase tracking-wider">Available Balance</p>
+            <p className="text-3xl font-black font-mono-game text-white mt-2">{formatCurrency(wallet?.balance || 0)}</p>
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => navigate('deposit')} className="flex-1 btn-gold text-xs py-3 flex items-center justify-center gap-2">
+                <ArrowDownLeft className="w-4 h-4" /> Deposit
+              </button>
+              <button onClick={() => navigate('withdraw')} className="flex-1 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-xs py-3 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                <ArrowUpRight className="w-4 h-4" /> Withdraw
+              </button>
+            </div>
           </div>
         </div>
-        <div className="card">{menu.map((item, i) => (
-          <button key={i} onClick={item.action} className="flex items-center justify-between w-full py-3.5 border-b border-[#2A2A2A] last:border-0">
-            <div className="flex items-center gap-3"><span className="text-lg">{item.icon}</span><span className="text-sm font-semibold text-white">{item.label}</span></div>
-            <span className="text-gray-500">→</span>
-          </button>
-        ))}</div>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] overflow-hidden">
+          {menu.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <button key={i} onClick={item.action} className="flex items-center justify-between w-full py-4 px-4 border-b border-[#2A2A2A] last:border-0 hover:bg-[#1A1A1A] transition-colors">
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 ${item.color}`} />
+                  <span className="text-sm font-semibold text-white">{item.label}</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-500" />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -537,32 +569,69 @@ export function ProfileScreen({ state, setState, navigate }: { state: AppState; 
   const wallet = getCurrentWallet(state);
   if (!user) return null;
   const menu = [
-    { icon: '⭐', label: 'VIP Level', sub: `Level ${user.vipLevel}`, action: () => navigate('vip') },
-    { icon: '🎁', label: 'My Bonuses', action: () => navigate('bonus') },
-    { icon: '📊', label: 'Transactions', action: () => navigate('history') },
-    { icon: '⚙️', label: 'Settings', action: () => navigate('settings') },
-    { icon: '💬', label: 'Support', action: () => navigate('support') },
+    { icon: Star, label: 'VIP Level', sub: `Level ${user.vipLevel}`, action: () => navigate('vip'), color: 'text-yellow-400' },
+    { icon: Gift, label: 'My Bonuses', action: () => navigate('bonus'), color: 'text-pink-400' },
+    { icon: History, label: 'Transactions', action: () => navigate('history'), color: 'text-blue-400' },
+    { icon: Settings, label: 'Settings', action: () => navigate('settings'), color: 'text-gray-400' },
+    { icon: HelpCircle, label: 'Support', action: () => navigate('support'), color: 'text-green-400' },
   ];
   return (
     <div className="pb-24 animate-fade-in">
-      <div className="bg-purple-gradient p-6 pt-12 safe-top">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-b from-[#FFE58F] to-[#D4A017] flex items-center justify-center text-2xl border-2 border-[#FFC93D]">👤</div>
-          <div><h2 className="text-lg font-bold text-white">{user.name}</h2><p className="text-xs text-purple-200 font-mono-game">UID: {user.uid}</p><p className="text-[10px] text-purple-300">Invite: {user.inviteCode}</p></div>
-        </div>
-        <div className="mt-4 bg-white/10 rounded-xl p-3 flex justify-around">
-          <div className="text-center"><p className="text-lg font-bold font-mono-game text-[#FFC93D]">{formatCurrency(wallet?.balance || 0)}</p><p className="text-[10px] text-purple-200">Balance</p></div>
-          <div className="text-center"><p className="text-lg font-bold font-mono-game text-white">{user.totalBets}</p><p className="text-[10px] text-purple-200">Bets</p></div>
-          <div className="text-center"><p className="text-lg font-bold font-mono-game text-[#22C55E]">{user.totalWins}</p><p className="text-[10px] text-purple-200">Wins</p></div>
+      <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 p-6 pt-12 safe-top relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFC93D]/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#FFE58F] to-[#D4A017] flex items-center justify-center border-3 border-[#FFC93D] shadow-xl shadow-[#FFC93D]/30">
+              <User className="w-10 h-10 text-black" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white">{user.name}</h2>
+              <p className="text-xs text-purple-200 font-mono-game mt-1">UID: {user.uid}</p>
+              <p className="text-[10px] text-purple-300">Invite: {user.inviteCode}</p>
+              <span className="text-[10px] bg-[#FFC93D]/20 text-[#FFC93D] px-2 py-0.5 rounded-full font-bold mt-1 inline-block flex items-center gap-1">
+                <Star className="w-3 h-3" /> VIP {user.vipLevel}
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 bg-black/30 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Wallet className="w-4 h-4 text-[#FFC93D]" />
+                  <p className="text-2xl font-black font-mono-game text-[#FFC93D]">{formatCurrency(wallet?.balance || 0)}</p>
+                </div>
+                <p className="text-[10px] text-purple-200">Balance</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black font-mono-game text-white">{user.totalBets}</p>
+                <p className="text-[10px] text-purple-200 mt-1">Total Bets</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black font-mono-game text-[#10B981]">{user.totalWins}</p>
+                <p className="text-[10px] text-purple-200 mt-1">Wins</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="px-4 pt-4 space-y-2">
-        <div className="card">{menu.map((item, i) => (
-          <button key={i} onClick={item.action} className="flex items-center justify-between w-full py-3.5 border-b border-[#2A2A2A] last:border-0">
-            <div className="flex items-center gap-3"><span className="text-lg">{item.icon}</span><div className="text-left"><p className="text-sm font-semibold text-white">{item.label}</p>{item.sub && <p className="text-[10px] text-gray-500">{item.sub}</p>}</div></div>
-            <span className="text-gray-500">→</span>
-          </button>
-        ))}</div>
+      <div className="px-4 pt-4 space-y-3">
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] overflow-hidden">
+          {menu.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <button key={i} onClick={item.action} className="flex items-center justify-between w-full py-4 px-4 border-b border-[#2A2A2A] last:border-0 hover:bg-[#1A1A1A] transition-colors">
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 ${item.color}`} />
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-white">{item.label}</p>
+                    {item.sub && <p className="text-[10px] text-gray-500">{item.sub}</p>}
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-500" />
+              </button>
+            );
+          })}
+        </div>
         <button 
           onClick={() => {
             if (confirm('Are you sure you want to logout?')) {
@@ -570,9 +639,10 @@ export function ProfileScreen({ state, setState, navigate }: { state: AppState; 
               window.location.reload();
             }
           }} 
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-900/30 to-red-800/30 border-2 border-red-900/50 text-red-400 font-bold text-sm hover:from-red-900/40 hover:to-red-800/40 transition-all active:scale-95"
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-900/30 to-red-800/30 border-2 border-red-900/50 text-red-400 font-bold text-sm hover:from-red-900/40 hover:to-red-800/40 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
-          🚪 Logout
+          <LogOut className="w-4 h-4" />
+          Logout
         </button>
       </div>
     </div>
@@ -680,15 +750,29 @@ export function SettingsScreen({ state, setState, navigate }: { state: AppState;
         <h1 className="text-lg font-bold">Settings</h1>
       </div>
       <div className="px-4 pt-3 space-y-4">
-        <div className="card">
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-3"><span className="text-lg">🔊</span><span className="text-sm font-semibold text-white">Sound Effects</span></div>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-900/30 flex items-center justify-center">
+                <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-white">Sound Effects</span>
+            </div>
             <button onClick={() => setState((prev: AppState) => ({ ...prev, settings: { ...prev.settings, soundEnabled: !prev.settings.soundEnabled } }))} className={`w-12 h-7 rounded-full transition-all ${state.settings.soundEnabled ? 'bg-purple-600' : 'bg-[#3A3A3A]'}`}>
               <div className={`w-5 h-5 rounded-full bg-white transition-all mx-1 ${state.settings.soundEnabled ? 'translate-x-5' : ''}`} />
             </button>
           </div>
         </div>
-        <div className="card"><button onClick={() => { if (confirm('Clear all data?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-3 text-red-400 font-bold text-sm">🗑️ Clear All Data</button></div>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] p-4">
+          <button onClick={() => { if (confirm('Clear all data? This will reset your account.')) { localStorage.clear(); window.location.reload(); } }} className="w-full flex items-center justify-center gap-2 py-3 text-red-400 font-bold text-sm hover:bg-red-900/10 rounded-xl transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear All Data
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -710,26 +794,44 @@ export function SupportScreen({ navigate }: { navigate: (s: string) => void }) {
         <h1 className="text-lg font-bold">Support</h1>
       </div>
       <div className="px-4 pt-3 space-y-4">
-        <div className="card flex items-center gap-3 p-4">
-          <span className="text-3xl">💬</span>
-          <div><p className="text-sm font-bold text-white">Live Chat</p><p className="text-[10px] text-gray-500">Available 24/7 • Avg response: 2 min</p></div>
-          <button className="ml-auto btn-gold text-xs py-2 px-4">Chat</button>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] p-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-green-900/30 flex items-center justify-center">
+            <MessageCircle className="w-6 h-6 text-green-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white">Live Chat</p>
+            <p className="text-[10px] text-gray-500">Available 24/7 • Avg response: 2 min</p>
+          </div>
+          <button className="btn-gold text-xs py-2 px-4">Chat</button>
         </div>
-        <div className="card flex items-center gap-3 p-4">
-          <span className="text-3xl">📧</span>
-          <div><p className="text-sm font-bold text-white">Email Support</p><p className="text-[10px] text-gray-500">support@legacywin.com</p></div>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] p-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-blue-900/30 flex items-center justify-center">
+            <Mail className="w-6 h-6 text-blue-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white">Email Support</p>
+            <p className="text-[10px] text-gray-500">support@legacywin.com</p>
+          </div>
         </div>
-        <div className="card flex items-center gap-3 p-4">
-          <span className="text-3xl">📞</span>
-          <div><p className="text-sm font-bold text-white">Phone Support</p><p className="text-[10px] text-gray-500">+91 9876543210 (10 AM - 8 PM)</p></div>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] p-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-purple-900/30 flex items-center justify-center">
+            <Phone className="w-6 h-6 text-purple-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white">Phone Support</p>
+            <p className="text-[10px] text-gray-500">+91 9876543210 (10 AM - 8 PM)</p>
+          </div>
         </div>
-        <div className="card">
-          <p className="text-xs font-bold text-gray-400 uppercase mb-3">❓ Frequently Asked Questions</p>
+        <div className="bg-[#141414] rounded-2xl border border-[#2A2A2A] p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <HelpCircle className="w-4 h-4 text-gray-400" />
+            <p className="text-xs font-bold text-gray-400 uppercase">Frequently Asked Questions</p>
+          </div>
           {faqs.map((faq, i) => (
             <div key={i} className="border-b border-[#2A2A2A] last:border-0">
               <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full flex items-center justify-between py-3 text-left">
                 <span className="text-sm font-semibold text-white">{faq.q}</span>
-                <span className={`text-gray-500 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>▼</span>
+                <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${openFaq === i ? 'rotate-90' : ''}`} />
               </button>
               {openFaq === i && <p className="text-xs text-gray-400 pb-3 leading-relaxed">{faq.a}</p>}
             </div>
